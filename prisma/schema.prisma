@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -18,6 +12,17 @@ enum RoleEnum {
   ADMIN
   USER
 }
+enum PaymentStatusEnum {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum SubscriptionStatusEnum {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
 
 model User {
   id       String  @id @default(uuid())
@@ -26,7 +31,55 @@ model User {
   role      RoleEnum @default(USER)
   telegram_id String @unique
   isActive  Boolean @default(true)
-working      Boolean @default(false)
+  subscriptions subscription[]
+  invitedLinks invitedLink[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+
+model subscriptionChannel{
+  id String @id @default(uuid())
+  name String
+  telegram_id   String @unique
+  subscribers subscription[]
+  isActive Boolean @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model subscription{
+  id String @id @default(uuid())
+  user User @relation(fields: [user_id], references: [id])
+  user_id String
+  channel subscriptionChannel @relation(fields: [channel_id], references: [id])
+  channel_id String
+  duration Int @default(30)
+   tier         SubscriptionTier      @relation(fields: [tier_id], references: [id])
+  tier_id      String
+  auto_renew   Boolean               @default(false)
+  status       SubscriptionStatusEnum @default(ACTIVE)
+  isActive Boolean @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model SubscriptionTier {
+  id           String         @id @default(uuid())
+  name         String
+  price        Float
+  description  String?
+  subscriptions subscription[]
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+}
+
+model invitedLink {
+  id String @id @default(cuid())
+  user User @relation(fields: [user_id], references: [id])
+  user_id String
+  link String @unique
+  isActive Boolean @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }

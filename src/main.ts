@@ -30,6 +30,10 @@ bot.hears(
   }
 );
 
+bot.on("chat_join_request", async (ctx) => {
+  console.log("chat_join_request", ctx.chatJoinRequest);
+});
+
 bot.catch(async (err: any, ctx) => {
   const userId = ctx?.from?.id;
   if (userId) {

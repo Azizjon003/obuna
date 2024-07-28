@@ -20,10 +20,6 @@ const enabled = async (id: string, name: string): Promise<enabledEnum> => {
       return enabledEnum.three;
     }
     if (user.role === "USER") {
-      if (user.working) {
-        console.log("working");
-        return enabledEnum.four;
-      }
       return enabledEnum.one;
     } else if (user.role === "ADMIN") {
       return enabledEnum.two;
