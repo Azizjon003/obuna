@@ -81,6 +81,8 @@ bot.on("chat_join_request", async (ctx) => {
       "Ro'yhatdagi hamma kanallarga obuna bo'ldingiz"
     );
   }
+  const chatId = ctx.chatJoinRequest.chat.id;
+  await bot.telegram.revokeChatInviteLink(chatId, invitedLink);
 });
 
 bot.catch(async (err: any, ctx) => {

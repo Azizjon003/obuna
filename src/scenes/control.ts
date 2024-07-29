@@ -31,27 +31,52 @@ scene.hears("Obunalar", async (ctx) => {
   const inlineKeyboard = [];
 
   for (let [index, channel] of channels.entries()) {
-    text += `${index + 1}. ${channel.name}\n`;
-
-    const linkText = await bot.telegram.createChatInviteLink(
+    let memberStatus;
+    const chatMember = await bot.telegram.getChatMember(
       channel.telegram_id,
-      {
-        creates_join_request: true,
-        name: `Join Request ${new Date().toISOString()}`,
-        // expire_date: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 soatdan keyin muddati tugaydi
-      }
+      ctx.from.id
     );
 
-    console.log(linkText);
-    inlineKeyboard.push([
-      Markup.button.url(`Obuna bo'lish: ${channel.name}`, linkText.invite_link),
-    ]);
-    await prisma.invitedLink.create({
-      data: {
-        link: linkText.invite_link,
-        user_id: user.id,
-      },
-    });
+    memberStatus = chatMember.status;
+    const isSubscribed = ["creator", "administrator", "member"].includes(
+      memberStatus
+    );
+
+    text += `${index + 1}. ${channel.name} - ${
+      isSubscribed ? "✅ Obuna bo'lgansiz" : "❌ Obuna bo'lmagansiz"
+    }\n`;
+
+    // text += `${index + 1}. ${channel.name}\n`;
+    console.log("isSubscribed", isSubscribed);
+    if (!isSubscribed) {
+      const linkText = await bot.telegram.createChatInviteLink(
+        channel.telegram_id,
+        {
+          creates_join_request: true,
+          name: `Join Request ${new Date().toISOString()}`,
+        }
+      );
+
+      inlineKeyboard.push([
+        Markup.button.url(
+          `Obuna bo'lish: ${channel.name}`,
+          linkText.invite_link
+        ),
+      ]);
+      console.log(linkText);
+      // inlineKeyboard.push([
+      //   Markup.button.url(
+      //     `Obuna bo'lish: ${channel.name}`,
+      //     linkText.invite_link
+      //   ),
+      // ]);
+      await prisma.invitedLink.create({
+        data: {
+          link: linkText.invite_link,
+          user_id: user.id,
+        },
+      });
+    }
   }
 
   ctx.reply(text, {
