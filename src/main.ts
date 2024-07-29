@@ -1,6 +1,7 @@
 require("dotenv").config();
 import { Context, Middleware } from "telegraf";
 import { SceneContext } from "telegraf/typings/scenes";
+import prisma from "../prisma/prisma";
 import bot from "./core/bot";
 import session from "./core/session";
 import stage from "./scenes/index";
@@ -32,6 +33,54 @@ bot.hears(
 
 bot.on("chat_join_request", async (ctx) => {
   console.log("chat_join_request", ctx.chatJoinRequest);
+  const invitedLink = String(
+    ctx.chatJoinRequest.invite_link?.invite_link || "nimadir"
+  );
+  const userId = ctx.chatJoinRequest.from.id;
+  const user = await prisma.user.findFirst({
+    where: {
+      telegram_id: String(userId),
+    },
+  });
+
+  if (!user) {
+    return;
+  }
+
+  const invitedLinkData = await prisma.invitedLink.findFirst({
+    where: {
+      link: invitedLink,
+    },
+  });
+
+  if (!invitedLinkData) {
+    return;
+  }
+
+  await ctx.approveChatJoinRequest(Number(ctx.chatJoinRequest.from.id));
+
+  await prisma.invitedLink.update({
+    where: {
+      id: invitedLinkData.id,
+    },
+    data: {
+      isActive: false,
+    },
+  });
+
+  const invitedLinks = await prisma.invitedLink.findMany({
+    where: {
+      user_id: user.id,
+      isActive: true,
+    },
+  });
+
+  if (invitedLinks.length === 0) {
+    await ctx.telegram.sendMessage(
+      user.telegram_id,
+      "Ro'yhatdagi hamma kanallarga obuna bo'ldingiz"
+    );
+  }
 });
 
 bot.catch(async (err: any, ctx) => {
