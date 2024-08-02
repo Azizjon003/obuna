@@ -85,8 +85,52 @@ scene.hears("Obunalar", async (ctx) => {
   });
 });
 
-scene.hears("Admin", async (ctx) => {
-  ctx.reply("Admin");
+scene.hears("Balans", async (ctx) => {
+  const user: any = await prisma.user.findFirst({
+    where: {
+      telegram_id: String(ctx.from.id),
+    },
+    include: {
+      wallet: true,
+    },
+  });
+  if (!user || !user.wallet) {
+    return ctx.reply("Sizda balans mavjud emas");
+  }
+
+  ctx.reply(`Sizning balansingiz: ${Number(user?.wallet?.amount) || 0} so'm`);
+});
+
+scene.hears("To'lovlar tarixi", async (ctx) => {
+  const user = await prisma.user.findFirst({
+    where: {
+      telegram_id: String(ctx.from.id),
+    },
+    include: {
+      paymentHistories: true,
+    },
+  });
+  if (!user) {
+    return ctx.reply("Sizda to'lovlar tarixi yo'q");
+  }
+  const payments = user.paymentHistories;
+
+  if (payments.length === 0) {
+    return ctx.reply("Sizda to'lovlar tarixi yo'q");
+  }
+  let text = "To'lovlar tarixi:\n\n";
+  for (let [index, payment] of payments.entries()) {
+    text += `${index + 1}. ${payment.amount} so'm - ${payment.created_at}\n`;
+  }
+  ctx.reply(text);
+});
+
+scene.hears("Do'stlarimni taklif qilish", async (ctx) => {
+  const invitedLink = `https://t.me/logger_backend_bol_bot?start=${ctx.from.id}`;
+
+  ctx.reply(
+    `Do'stlaringizni taklif qilish uchun quyidagi havolani ulashing: ${invitedLink}\n Sizga bonuslar taqdim etiladi`
+  );
 });
 
 export default scene;

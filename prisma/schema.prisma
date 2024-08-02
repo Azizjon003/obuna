@@ -33,6 +33,18 @@ model User {
   isActive  Boolean @default(true)
   subscriptions subscription[]
   invitedLinks invitedLink[]
+  wallet wallet[]
+  paymentHistories paymentHistory[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model wallet {
+  id String @id @default(uuid())
+  user User @relation(fields: [user_id], references: [id])
+  user_id String
+  amount Int
+  isActive Boolean @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }
@@ -81,5 +93,24 @@ model invitedLink {
   link String @unique
   isActive Boolean @default(true)
   created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model paymentHistory {
+  id String @id @default(uuid())
+  user User @relation(fields: [user_id], references: [id])
+  user_id String
+  amount Int
+  status PaymentStatusEnum
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model invitedUser {
+    id String @id @default(uuid())
+    
+    user_id String
+    friendId String 
+     created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }

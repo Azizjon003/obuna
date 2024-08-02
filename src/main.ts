@@ -6,7 +6,9 @@ import bot from "./core/bot";
 import session from "./core/session";
 import stage from "./scenes/index";
 import botStart from "./utils/startBot";
+import { isInvited } from "./utils/subcribe";
 
+bot.use(isInvited);
 bot.use(session);
 
 const middleware: Middleware<Context | SceneContext> = (ctx: any, next) => {

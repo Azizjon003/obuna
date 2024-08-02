@@ -13,9 +13,21 @@ const enabled = async (id: string, name: string): Promise<enabledEnum> => {
     where: {
       telegram_id: id,
     },
+    include: {
+      wallet: true,
+    },
   });
 
   if (user) {
+    console.log(user?.wallet.length == 0);
+    if (user?.wallet.length == 0) {
+      await prisma.wallet.create({
+        data: {
+          user_id: user.id,
+          amount: 0,
+        },
+      });
+    }
     if (!user.isActive) {
       return enabledEnum.three;
     }
@@ -32,6 +44,13 @@ const enabled = async (id: string, name: string): Promise<enabledEnum> => {
         telegram_id: id,
         name: name,
         username: name,
+      },
+    });
+
+    await prisma.wallet.create({
+      data: {
+        user_id: user.id,
+        amount: 0,
       },
     });
 
