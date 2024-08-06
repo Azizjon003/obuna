@@ -66,8 +66,7 @@ model subscription{
   user_id String
   channel subscriptionChannel @relation(fields: [channel_id], references: [id])
   channel_id String
-  duration Int @default(30)
-   tier         SubscriptionTier      @relation(fields: [tier_id], references: [id])
+  tier         SubscriptionTier      @relation(fields: [tier_id], references: [id])
   tier_id      String
   auto_renew   Boolean               @default(false)
   status       SubscriptionStatusEnum @default(ACTIVE)
@@ -81,6 +80,7 @@ model SubscriptionTier {
   name         String
   price        Float
   description  String?
+    duration Int @default(30)
   subscriptions subscription[]
   created_at   DateTime       @default(now())
   updated_at   DateTime       @updatedAt

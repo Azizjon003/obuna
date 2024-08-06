@@ -85,7 +85,7 @@ scene.hears("Obunalar", async (ctx) => {
   });
 });
 
-scene.hears("Balans", async (ctx) => {
+scene.hears("Balans", async (ctx: any) => {
   const user: any = await prisma.user.findFirst({
     where: {
       telegram_id: String(ctx.from.id),
@@ -97,8 +97,14 @@ scene.hears("Balans", async (ctx) => {
   if (!user || !user.wallet) {
     return ctx.reply("Sizda balans mavjud emas");
   }
+  const balanceAmount = Number(user?.wallet?.amount) || 0;
 
-  ctx.reply(`Sizning balansingiz: ${Number(user?.wallet?.amount) || 0} so'm`);
+  const keyboard = Markup.inlineKeyboard([
+    Markup.button.callback("Balansni to'ldirish", "top_up_balance"),
+  ]);
+
+  ctx.reply(`Sizning balansingiz: ${balanceAmount} so'm`, keyboard);
+  return ctx.scene.enter("balance");
 });
 
 scene.hears("To'lovlar tarixi", async (ctx) => {
