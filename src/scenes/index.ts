@@ -1,8 +1,8 @@
 const { Scenes } = require("telegraf");
-import balance from "./balance";
 import control from "./control";
 import start from "./start";
+import subscribe from "./subscribe";
 
-const stage = new Scenes.Stage([start, control, balance]);
+const stage = new Scenes.Stage([start, subscribe, control]);
 
 export default stage;

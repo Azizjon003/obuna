@@ -85,6 +85,7 @@ model subscription{
   auto_renew   Boolean               @default(false)
   status       SubscriptionStatusEnum @default(ACTIVE)
   isActive Boolean @default(true)
+  endDate DateTime?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }
