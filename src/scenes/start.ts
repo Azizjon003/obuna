@@ -6,6 +6,11 @@ const scene = new Scenes.BaseScene("start");
 
 export let keyboard = [["Obunalar", "To'lovlar tarixi"], ["Sozlamalar"]];
 export let admin_keyboard = [["Admin"]];
+export let merchant_keyboard = [
+  ["Foydalanuvchilar ro'yxati"],
+  ["To'plamlar ro'yxati"],
+  ["To'lovlar ro'yhati"],
+];
 
 scene.enter(async (ctx: any) => {
   const user_id = ctx.from?.id;
@@ -88,6 +93,14 @@ scene.enter(async (ctx: any) => {
       "Assalomu alaykum.Kechirasiz siz admin tomonidan bloklangansiz"
     );
     return;
+  } else if (enable === "four") {
+    ctx.telegram.sendMessage(
+      user_id,
+      "Assalomu alaykum.Merchant xush kelibsiz",
+      keyboards(merchant_keyboard)
+    );
+
+    return await ctx.scene.enter("merchant");
   }
 });
 
