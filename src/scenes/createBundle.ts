@@ -1,4 +1,4 @@
-import { Scenes } from "telegraf";
+import { Markup, Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
 import { showBundles } from "./merchant";
 
@@ -13,9 +13,38 @@ scene.enter(async (ctx: any) => {
   await ctx.reply("Yangi to'plam nomini kiriting:");
 });
 
+scene.on("forward_date", async (ctx: any) => {
+  if (ctx.session.step === 3) {
+    const forwardedMsg = ctx.message;
+    if (
+      forwardedMsg.forward_from_chat &&
+      forwardedMsg.forward_from_chat.type === "channel"
+    ) {
+      const channel = {
+        name: forwardedMsg.forward_from_chat.title,
+        telegram_id: String(forwardedMsg.forward_from_chat.id),
+      };
+      ctx.session.bundle.channels.push(channel);
+      await ctx.reply(
+        `Kanal "${channel.name}" qo'shildi. Yana kanal qo'shish uchun xabar forward qiling yoki "Tugatish" tugmasini bosing.`
+      );
+    } else {
+      await ctx.reply(
+        "Bu xabar kanaldan emas. Iltimos, kanaldan xabarni forward qiling."
+      );
+    }
+  }
+});
 scene.on("text", async (ctx: any) => {
   const step = ctx.session.step || 0;
 
+  // if (ctx.message.text === "Tugatish" && step === 3) {
+  //   ctx.session.bundle.channels = ctx.session.bundle.channels || [];
+
+  //   console
+  //   await createBundle(ctx, ctx.session.bundle);
+  //   return;
+  // }
   switch (step) {
     case 0:
       ctx.session.bundle.name = ctx.message.text;
@@ -37,49 +66,62 @@ scene.on("text", async (ctx: any) => {
     case 2:
       ctx.session.bundle.description = ctx.message.text;
       await ctx.reply(
-        "Kanallar ro'yxatini kiriting (har bir kanal yangi qatorda):\nMisol:\nKanal nomi 1 - https://t.me/kanal1\nKanal nomi 2 - https://t.me/kanal2"
+        'Kanallarni qo\'shish uchun har bir kanaldan bitta xabarni forward qiling. Tugatish uchun "Tugatish" tugmasini bosing.',
+        Markup.keyboard([["Tugatish"]])
+          .oneTime()
+          .resize()
       );
       ctx.session.step = 3;
+      ctx.session.bundle.channels = [];
+      break;
+    case 3:
+      if (ctx.message.text === "Tugatish") {
+        // Kanallarni qo'shish jarayoni tugadi
+        ctx.session.bundle.channels = ctx.session.bundle.channels;
+
+        console.log(ctx.session.bundle);
+        await createBundle(ctx, ctx.session.bundle);
+        return;
+      }
+      await ctx.reply(
+        'Iltimos, kanaldan xabarni forward qiling yoki "Tugatish" tugmasini bosing.'
+      );
       break;
 
-    case 3:
-      const channelLines = ctx.message.text.split("\n");
-      const channels = channelLines.map((line: any) => {
-        const [name, link] = line.split(" - ");
-        return { name: name.trim(), telegram_id: link.trim() };
-      });
-
-      ctx.session.bundle.channels = channels;
-
-      const bundleData = ctx.session.bundle;
-      try {
-        const newBundle = await prisma.channelBundle.create({
-          data: {
-            name: bundleData.name,
-            price: bundleData.price,
-            description: bundleData.description,
-            merchantUser: {
-              connect: { telegram_id: String(ctx.from.id) },
-            },
-            channels: {
-              create: bundleData.channels,
-            },
-          },
-        });
-
-        await ctx.reply(
-          `To'plam "${newBundle.name}" muvaffaqiyatli yaratildi!`
-        );
-      } catch (error) {
-        console.error("Error creating bundle:", error);
-        await ctx.reply(
-          "To'plam yaratishda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-        );
-      }
-
-      await showBundles(ctx, 1); // Assuming you have this function defined elsewhere
-      return await ctx.scene.leave();
+    default:
+      await ctx.reply("Noma'lum buyruq. Iltimos, ko'rsatmalarga amal qiling.");
   }
 });
+
+async function createBundle(ctx: any, bundleData: any) {
+  try {
+    const newBundle = await prisma.channelBundle.create({
+      data: {
+        name: bundleData.name,
+        price: bundleData.price,
+        description: bundleData.description,
+        merchantUser: {
+          connect: { telegram_id: String(ctx.from.id) },
+        },
+        channels: {
+          create: bundleData.channels,
+        },
+      },
+    });
+
+    await ctx.reply(
+      `To'plam "${newBundle.name}" muvaffaqiyatli yaratildi!`,
+      Markup.removeKeyboard()
+    );
+  } catch (error) {
+    console.error("Error creating bundle:", error);
+    await ctx.reply(
+      "To'plam yaratishda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
+    );
+  }
+
+  await showBundles(ctx, 1); // Assuming you have this function defined elsewhere
+  return ctx.scene.leave();
+}
 
 export default scene;

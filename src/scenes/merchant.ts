@@ -73,6 +73,97 @@ scene.hears("To'plamlar ro'yxati", async (ctx) => {
   await showBundles(ctx, 1); // 1-sahifadan boshlaymiz
 });
 
+// scene.on("callback_query", async (ctx: any) => {
+//   console.log(ctx.update.callback_query.data, "any");
+// });
+
+// Pagination uchun action
+scene.action(/^bundles_page_(\d+)$/, async (ctx) => {
+  const page = parseInt(ctx.match[1]);
+  await showBundles(ctx, page);
+  await ctx.answerCbQuery();
+});
+
+// To'plam ma'lumotlarini ko'rish
+scene.action(/^view_bundle_/, async (ctx: any) => {
+  console.log(ctx.update.callback_query.data, "nimadir");
+  const bundleId = ctx.update.callback_query.data.split("_")[2];
+
+  try {
+    const bundle = await prisma.channelBundle.findUnique({
+      where: { id: bundleId },
+      include: { channels: true },
+    });
+
+    if (!bundle) {
+      return ctx.answerCbQuery("To'plam topilmadi");
+    }
+
+    const botUsername = ctx.botInfo?.username || ctx.me;
+    const shareUrl = `https://t.me/${botUsername}?start=${bundle.id}`;
+    let text = `📦 To'plam: ${bundle.name}\n\n`;
+    text += `💰 Narx: ${bundle.price} so'm\n`;
+    text += `📝 Tavsif: ${bundle.description || "Mavjud emas"}\n\n`;
+    text += `Kanallarga qo'shilish uchun url ${shareUrl}\n`; //share url
+    text += `📢 Kanallar (${bundle.channels.length}):\n`;
+    bundle.channels.forEach((channel, index) => {
+      text += `${index + 1}. ${channel.name} - ${channel.telegram_id}\n`;
+    });
+
+    const inlineKeyboard = [
+      [Markup.button.callback("✏️ Tahrirlash", `edit_bundle_${bundleId}`)],
+      [Markup.button.callback("🗑️ O'chirish", `delete_bundle_${bundleId}`)],
+      [Markup.button.callback("⬅️ Orqaga", "back_to_bundles")],
+    ];
+
+    await ctx.editMessageText(text, Markup.inlineKeyboard(inlineKeyboard));
+    await ctx.answerCbQuery();
+  } catch (error) {
+    console.error("Error in view_bundle:", error);
+    await ctx.answerCbQuery(
+      "Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
+    );
+  }
+});
+
+// To'plamni tahrirlash
+scene.action(/^edit_bundle_/, async (ctx: any) => {
+  console.log(ctx.update.callback_query.data, "edit nimadir");
+  const bundleId = ctx.update.callback_query.data.split("_")[2];
+  ctx.scene.enter("editBundle", { bundleId });
+  await ctx.answerCbQuery();
+});
+
+// Yangi to'plam yaratish
+scene.action("create_new_bundle", async (ctx: any) => {
+  ctx.scene.enter("createBundle");
+  await ctx.answerCbQuery();
+});
+
+// To'plamni o'chirish
+scene.action(/^delete_bundle_/, async (ctx: any) => {
+  const bundleId = ctx.update.callback_query.data.split("_")[2];
+
+  try {
+    await prisma.channelBundle.delete({
+      where: { id: bundleId },
+    });
+
+    await ctx.answerCbQuery("To'plam muvaffaqiyatli o'chirildi");
+    await showBundles(ctx, 1);
+  } catch (error) {
+    console.error("Error in delete_bundle:", error);
+    await ctx.answerCbQuery(
+      "To'plamni o'chirishda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
+    );
+  }
+});
+
+// Orqaga qaytish
+scene.action("back_to_bundles", async (ctx) => {
+  await showBundles(ctx, 1);
+  await ctx.answerCbQuery();
+});
 export async function showBundles(ctx: any, page: number) {
   const ITEMS_PER_PAGE = 5;
   const merchantUserId = ctx.from.id;
@@ -148,89 +239,6 @@ export async function showBundles(ctx: any, page: number) {
     await ctx.reply("Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.");
   }
 }
-
-// Pagination uchun action
-scene.action(/^bundles_page_(\d+)$/, async (ctx) => {
-  const page = parseInt(ctx.match[1]);
-  await showBundles(ctx, page);
-  await ctx.answerCbQuery();
-});
-
-// To'plam ma'lumotlarini ko'rish
-scene.action(/^view_bundle_$/, async (ctx: any) => {
-  const bundleId = ctx.update.callback_query.data.split("_")[2];
-
-  try {
-    const bundle = await prisma.channelBundle.findUnique({
-      where: { id: bundleId },
-      include: { channels: true },
-    });
-
-    if (!bundle) {
-      return ctx.answerCbQuery("To'plam topilmadi");
-    }
-
-    let text = `📦 To'plam: ${bundle.name}\n\n`;
-    text += `💰 Narx: ${bundle.price} so'm\n`;
-    text += `📝 Tavsif: ${bundle.description || "Mavjud emas"}\n\n`;
-    text += `📢 Kanallar (${bundle.channels.length}):\n`;
-    bundle.channels.forEach((channel, index) => {
-      text += `${index + 1}. ${channel.name} - ${channel.telegram_id}\n`;
-    });
-
-    const inlineKeyboard = [
-      [Markup.button.callback("✏️ Tahrirlash", `edit_bundle_${bundleId}`)],
-      [Markup.button.callback("🗑️ O'chirish", `delete_bundle_${bundleId}`)],
-      [Markup.button.callback("⬅️ Orqaga", "back_to_bundles")],
-    ];
-
-    await ctx.editMessageText(text, Markup.inlineKeyboard(inlineKeyboard));
-    await ctx.answerCbQuery();
-  } catch (error) {
-    console.error("Error in view_bundle:", error);
-    await ctx.answerCbQuery(
-      "Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-    );
-  }
-});
-
-// To'plamni tahrirlash
-scene.action(/^edit_bundle_$/, async (ctx: any) => {
-  const bundleId = ctx.update.callback_query.data.split("_")[2];
-  ctx.scene.enter("editBundle", { bundleId });
-  await ctx.answerCbQuery();
-});
-
-// Yangi to'plam yaratish
-scene.action("create_new_bundle", async (ctx: any) => {
-  ctx.scene.enter("createBundle");
-  await ctx.answerCbQuery();
-});
-
-// To'plamni o'chirish
-scene.action(/^delete_bundle_$/, async (ctx: any) => {
-  const bundleId = ctx.update.callback_query.data.split("_")[2];
-
-  try {
-    await prisma.channelBundle.delete({
-      where: { id: bundleId },
-    });
-
-    await ctx.answerCbQuery("To'plam muvaffaqiyatli o'chirildi");
-    await showBundles(ctx, 1);
-  } catch (error) {
-    console.error("Error in delete_bundle:", error);
-    await ctx.answerCbQuery(
-      "To'plamni o'chirishda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
-    );
-  }
-});
-
-// Orqaga qaytish
-scene.action("back_to_bundles", async (ctx) => {
-  await showBundles(ctx, 1);
-  await ctx.answerCbQuery();
-});
 
 // To'plam yaratish scenesi
 
