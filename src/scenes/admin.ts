@@ -1,6 +1,6 @@
+import { RoleEnum } from "@prisma/client";
 import { Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
-import bot from "../core/bot";
 import { keyboards } from "../utils/keyboards";
 import { admin_keyboard } from "./start";
 
@@ -188,6 +188,7 @@ async function showMerchants(ctx: any, page: any) {
       ...merchants.map((m) => [
         { text: m.username || m.name, callback_data: `merchant:${m.id}` },
       ]),
+      [{ text: "Merchant Qo'shish", callback_data: "add_merchant_user" }],
       [],
     ];
 
@@ -219,20 +220,39 @@ async function showMerchants(ctx: any, page: any) {
   }
 }
 
+scene.action("add_merchant_user", async (ctx: any) => {
+  try {
+    const userId = ctx.from.id;
+
+    const user = await prisma.user.findUnique({
+      where: { telegram_id: userId.toString() },
+    });
+
+    if (!user || user.role !== RoleEnum.ADMIN) {
+      return ctx.reply("Sizda bu amalni bajarish uchun huquq yo'q.");
+    }
+
+    return ctx.scene.enter("addMerchant");
+  } catch (error) {
+    console.error("Xatolik yuz berdi:", error);
+    ctx.reply("Xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.");
+  }
+});
+
 // Callback query handler
-bot.action(/^merchants:(\d+)$/, async (ctx) => {
+scene.action(/^merchants:(\d+)$/, async (ctx) => {
   const page = parseInt(ctx.match.input.split(":")[1]);
   await showMerchants(ctx, page);
   ctx.answerCbQuery();
 });
 
-bot.action(/^merchant:/, async (ctx) => {
+scene.action(/^merchant:/, async (ctx) => {
   const merchantId = ctx.match.input.split(":")[1];
   await showMerchantDetails(ctx, merchantId);
   ctx.answerCbQuery();
 });
 
-bot.action("back_to_admin_menu", async (ctx) => {
+scene.action("back_to_admin_menu", async (ctx) => {
   // Admin menyusiga qaytish logikasi
   ctx.answerCbQuery();
 });
@@ -301,7 +321,7 @@ async function showMerchantDetails(ctx: any, merchantId: string) {
 }
 const BUNDLES_PER_PAGE = 5;
 // Kanallar to'plamlarini ko'rish uchun yangi handler
-bot.action(/^merchant_bundles:/, async (ctx) => {
+scene.action(/^merchant_bundles:/, async (ctx) => {
   const merchantId = ctx.match.input.split(":")[1];
   await showMerchantBundles(ctx, merchantId);
   ctx.answerCbQuery();
@@ -407,14 +427,14 @@ async function showMerchantBundles(
 }
 
 // Update the action handler to include the page number
-bot.action(/^merchant_bundles:(\w+):(\d+)$/, async (ctx) => {
+scene.action(/^merchant_bundles:(\w+):(\d+)$/, async (ctx) => {
   const [, merchantId, page] = ctx.match.input.split(":");
   await showMerchantBundles(ctx, merchantId, parseInt(page));
   ctx.answerCbQuery();
 });
 
 // Update the initial merchant bundles action to start from page 1
-bot.action(/^merchant_bundles:(\w+)$/, async (ctx) => {
+scene.action(/^merchant_bundles:(\w+)$/, async (ctx) => {
   const merchantId = ctx.match.input.split(":")[1];
   await showMerchantBundles(ctx, merchantId, 1);
   ctx.answerCbQuery();

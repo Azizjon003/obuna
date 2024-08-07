@@ -1,4 +1,5 @@
 const { Scenes } = require("telegraf");
+import addMerchant from "./addMerchant";
 import admin from "./admin";
 import control from "./control";
 import createBundle from "./createBundle";
@@ -14,6 +15,7 @@ const stage = new Scenes.Stage([
   editBundle,
   createBundle,
   admin,
+  addMerchant,
 ]);
 
 export default stage;
