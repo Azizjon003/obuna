@@ -1,125 +1,125 @@
-generator client {
-  provider = "prisma-client-js"
-}
+  generator client {
+    provider = "prisma-client-js"
+  }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-
-enum RoleEnum {
-  ADMIN
-  USER
-  MERCHANT
-}
-enum PaymentStatusEnum {
-  PENDING
-  COMPLETED
-  FAILED
-}
-
-enum SubscriptionStatusEnum {
-  ACTIVE
-  EXPIRED
-  CANCELLED
-}
-
-model User {
-  id       String  @id @default(uuid())
-  username  String?
-  name      String?
-  role      RoleEnum @default(USER)
-  telegram_id String @unique
-  isActive  Boolean @default(true)
-  subscriptions subscription[]
-  invitedLinks invitedLink[]
-  wallet wallet[]
-  ChannelBundle ChannelBundle[]
-  merchantWallet MerchantWallet? 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
-
-model wallet {
-  id String @id @default(uuid())
-  user User @relation(fields: [user_id], references: [id])
-  user_id String
-  amount Int
-  isActive Boolean @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
+  datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+  }
 
 
-model Channel{
-  id String @id @default(uuid())
-  name String
-  telegram_id   String @unique
-  channelBundleId String
-  channelBundle   ChannelBundle @relation(fields: [channelBundleId], references: [id])
+  enum RoleEnum {
+    ADMIN
+    USER
+    MERCHANT
+  }
+  enum PaymentStatusEnum {
+    PENDING
+    COMPLETED
+    FAILED
+  }
 
-  isActive Boolean @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
+  enum SubscriptionStatusEnum {
+    ACTIVE
+    EXPIRED
+    CANCELLED
+  }
 
-model ChannelBundle {
-  id             String  @id @default(uuid())
-  merchantUserId String
-  merchantUser   User      @relation(fields: [merchantUserId], references: [id])
-  name           String
-  description    String?
-  price          Float
-  duration       Int @default(30)
-  createdAt      DateTime  @default(now())
-  channels       Channel[]
-  subscriptions  subscription[]
-}
+  model User {
+    id       String  @id @default(uuid())
+    username  String?
+    name      String?
+    role      RoleEnum @default(USER)
+    telegram_id String @unique
+    isActive  Boolean @default(true)
+    subscriptions subscription[]
+    invitedLinks invitedLink[]
+    wallet wallet[]
+    ChannelBundle ChannelBundle[]
+    merchantWallet MerchantWallet? 
+    created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
+  }
 
-model subscription{
-  id String @id @default(uuid())
-  user User @relation(fields: [user_id], references: [id])
-  user_id String
-  channelBundleId  String
-  channelBundle   ChannelBundle @relation(fields: [channelBundleId], references: [id])
-  auto_renew   Boolean               @default(false)
-  price        Float
-  status       SubscriptionStatusEnum @default(ACTIVE)
-  isActive Boolean @default(true)
-  endDate DateTime?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
-
+  model wallet {
+    id String @id @default(uuid())
+    user User @relation(fields: [user_id], references: [id])
+    user_id String
+    amount Int
+    isActive Boolean @default(true)
+    created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
+  }
 
 
-model invitedLink {
-  id String @id @default(cuid())
-  user User @relation(fields: [user_id], references: [id])
-  user_id String
-  link String @unique
-  isActive Boolean @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
+  model Channel{
+    id String @id @default(uuid())
+    name String
+    telegram_id   String @unique
+    channelBundleId String
+    channelBundle   ChannelBundle @relation(fields: [channelBundleId], references: [id])
 
-model MerchantWallet {
-  id             String   @id @default(uuid())
-  merchantUserId String   @unique
-  merchantUser   User     @relation(fields: [merchantUserId], references: [id])
-  balance        Float    @default(0)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-  withdrawalRequests WithdrawalRequest[]
-}
+    isActive Boolean @default(true)
+    created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
+  }
 
-model WithdrawalRequest {
-  id             String   @id @default(uuid())
-  walletId       String
-  wallet         MerchantWallet @relation(fields: [walletId], references: [id])
-  amount         Float
-  status         PaymentStatusEnum @default(PENDING)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-}
+  model ChannelBundle {
+    id             String  @id @default(uuid())
+    merchantUserId String
+    merchantUser   User      @relation(fields: [merchantUserId], references: [id])
+    name           String
+    description    String?
+    price          Float
+    duration       Int @default(30)
+    createdAt      DateTime  @default(now())
+    channels       Channel[]
+    subscriptions  subscription[]
+  }
+
+  model subscription{
+    id String @id @default(uuid())
+    user User @relation(fields: [user_id], references: [id])
+    user_id String
+    channelBundleId  String
+    channelBundle   ChannelBundle @relation(fields: [channelBundleId], references: [id])
+    auto_renew   Boolean               @default(false)
+    price        Float
+    status       SubscriptionStatusEnum @default(ACTIVE)
+    isActive Boolean @default(true)
+    endDate DateTime?
+    created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
+  }
+
+
+
+  model invitedLink {
+    id String @id @default(cuid())
+    user User @relation(fields: [user_id], references: [id])
+    user_id String
+    link String @unique
+    isActive Boolean @default(true)
+    created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
+  }
+
+  model MerchantWallet {
+    id             String   @id @default(uuid())
+    merchantUserId String   @unique
+    merchantUser   User     @relation(fields: [merchantUserId], references: [id])
+    balance        Float    @default(0)
+    created_at     DateTime @default(now())
+    updated_at     DateTime @updatedAt
+    withdrawalRequests WithdrawalRequest[]
+  }
+
+  model WithdrawalRequest {
+    id             String   @id @default(uuid())
+    walletId       String
+    wallet         MerchantWallet @relation(fields: [walletId], references: [id])
+    amount         Float
+    status         PaymentStatusEnum @default(PENDING)
+    created_at     DateTime @default(now())
+    updated_at     DateTime @updatedAt
+  }

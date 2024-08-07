@@ -299,7 +299,7 @@ async function showMerchantDetails(ctx: any, merchantId: string) {
     );
   }
 }
-
+const BUNDLES_PER_PAGE = 5;
 // Kanallar to'plamlarini ko'rish uchun yangi handler
 bot.action(/^merchant_bundles:/, async (ctx) => {
   const merchantId = ctx.match.input.split(":")[1];
@@ -307,15 +307,29 @@ bot.action(/^merchant_bundles:/, async (ctx) => {
   ctx.answerCbQuery();
 });
 
-async function showMerchantBundles(ctx: any, merchantId: string) {
+async function showMerchantBundles(
+  ctx: any,
+  merchantId: string,
+  page: number = 1
+) {
   try {
+    const skip = (page - 1) * BUNDLES_PER_PAGE;
+
     const merchant = await prisma.user.findUnique({
       where: { id: merchantId },
       include: {
         ChannelBundle: {
+          skip,
+          take: BUNDLES_PER_PAGE,
           include: {
             channels: true,
           },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+        _count: {
+          select: { ChannelBundle: true },
         },
       },
     });
@@ -326,11 +340,11 @@ async function showMerchantBundles(ctx: any, merchantId: string) {
 
     let message = `👤 ${
       merchant.username || merchant.name
-    } ning kanallar to'plamlari:\n\n`;
+    } ning kanallar to'plamlari (${page}-bet):\n\n`;
 
     if (merchant.ChannelBundle && merchant.ChannelBundle.length > 0) {
       merchant.ChannelBundle.forEach((bundle, index) => {
-        message += `📦 ${index + 1}. ${bundle.name}\n`;
+        message += `📦 ${skip + index + 1}. ${bundle.name}\n`;
         message += `   💲 Narxi: ${bundle.price} so'm\n`;
         message += `   ⏳ Davomiyligi: ${bundle.duration} kun\n`;
         message += `   📡 Kanallar:\n`;
@@ -340,23 +354,44 @@ async function showMerchantBundles(ctx: any, merchantId: string) {
         message += "\n";
       });
     } else {
-      message += "Hozircha kanallar to'plami mavjud emas.\n";
+      message += "Ushbu sahifada kanallar to'plami mavjud emas.\n";
     }
 
-    const keyboard = [
-      [
-        {
-          text: "Merchant ma'lumotlariga qaytish",
-          callback_data: `merchant:${merchantId}`,
-        },
-      ],
-      [
-        {
-          text: "Merchantlar ro'yxatiga qaytish",
-          callback_data: "merchants:1",
-        },
-      ],
-    ];
+    const totalBundles = merchant._count.ChannelBundle;
+    const totalPages = Math.ceil(totalBundles / BUNDLES_PER_PAGE);
+
+    const keyboard = [];
+
+    // Pagination buttons
+    if (totalPages > 1) {
+      const paginationRow = [];
+      if (page > 1) {
+        paginationRow.push({
+          text: "⬅️ Oldingi",
+          callback_data: `merchant_bundles:${merchantId}:${page - 1}`,
+        });
+      }
+      if (page < totalPages) {
+        paginationRow.push({
+          text: "Keyingi ➡️",
+          callback_data: `merchant_bundles:${merchantId}:${page + 1}`,
+        });
+      }
+      keyboard.push(paginationRow);
+    }
+
+    keyboard.push([
+      {
+        text: "Merchant ma'lumotlariga qaytish",
+        callback_data: `merchant:${merchantId}`,
+      },
+    ]);
+    keyboard.push([
+      {
+        text: "Merchantlar ro'yxatiga qaytish",
+        callback_data: "merchants:1",
+      },
+    ]);
 
     ctx.editMessageText(message, {
       reply_markup: {
@@ -370,4 +405,18 @@ async function showMerchantBundles(ctx: any, merchantId: string) {
     );
   }
 }
+
+// Update the action handler to include the page number
+bot.action(/^merchant_bundles:(\w+):(\d+)$/, async (ctx) => {
+  const [, merchantId, page] = ctx.match.input.split(":");
+  await showMerchantBundles(ctx, merchantId, parseInt(page));
+  ctx.answerCbQuery();
+});
+
+// Update the initial merchant bundles action to start from page 1
+bot.action(/^merchant_bundles:(\w+)$/, async (ctx) => {
+  const merchantId = ctx.match.input.split(":")[1];
+  await showMerchantBundles(ctx, merchantId, 1);
+  ctx.answerCbQuery();
+});
 export default scene;
