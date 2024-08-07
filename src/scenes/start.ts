@@ -3,11 +3,7 @@ import enabled from "../utils/enabled";
 import { keyboards } from "../utils/keyboards";
 const scene = new Scenes.BaseScene("start");
 
-export let keyboard = [
-  ["Obunalar", "To'lovlar tarixi"],
-  ["Balans", "Do'stlarimni taklif qilish"],
-  ["Sozlamalar"],
-];
+export let keyboard = [["Obunalar", "To'lovlar tarixi"], ["Sozlamalar"]];
 export let admin_keyboard = [["Admin"]];
 
 scene.enter(async (ctx: any) => {

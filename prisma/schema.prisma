@@ -11,6 +11,7 @@ datasource db {
 enum RoleEnum {
   ADMIN
   USER
+  MERCHANT
 }
 enum PaymentStatusEnum {
   PENDING
@@ -34,7 +35,7 @@ model User {
   subscriptions subscription[]
   invitedLinks invitedLink[]
   wallet wallet[]
-  paymentHistories paymentHistory[]
+  ChannelBundle ChannelBundle[]
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }
@@ -50,24 +51,37 @@ model wallet {
 }
 
 
-model subscriptionChannel{
+model Channel{
   id String @id @default(uuid())
   name String
   telegram_id   String @unique
-  subscribers subscription[]
+  channelBundleId String
+  channelBundle   ChannelBundle @relation(fields: [channelBundleId], references: [id])
+
   isActive Boolean @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+}
+
+model ChannelBundle {
+  id             String  @id @default(uuid())
+  merchantUserId String
+  merchantUser   User      @relation(fields: [merchantUserId], references: [id])
+  name           String
+  description    String?
+  price          Float
+  duration       Int @default(30)
+  createdAt      DateTime  @default(now())
+  channels       Channel[]
+  subscriptions  subscription[]
 }
 
 model subscription{
   id String @id @default(uuid())
   user User @relation(fields: [user_id], references: [id])
   user_id String
-  channel subscriptionChannel @relation(fields: [channel_id], references: [id])
-  channel_id String
-  tier         SubscriptionTier      @relation(fields: [tier_id], references: [id])
-  tier_id      String
+  channelBundleId  String
+  channelBundle   ChannelBundle @relation(fields: [channelBundleId], references: [id])
   auto_renew   Boolean               @default(false)
   status       SubscriptionStatusEnum @default(ACTIVE)
   isActive Boolean @default(true)
@@ -75,16 +89,7 @@ model subscription{
   updated_at DateTime @updatedAt
 }
 
-model SubscriptionTier {
-  id           String         @id @default(uuid())
-  name         String
-  price        Float
-  description  String?
-    duration Int @default(30)
-  subscriptions subscription[]
-  created_at   DateTime       @default(now())
-  updated_at   DateTime       @updatedAt
-}
+
 
 model invitedLink {
   id String @id @default(cuid())
@@ -93,24 +98,5 @@ model invitedLink {
   link String @unique
   isActive Boolean @default(true)
   created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
-
-model paymentHistory {
-  id String @id @default(uuid())
-  user User @relation(fields: [user_id], references: [id])
-  user_id String
-  amount Int
-  status PaymentStatusEnum
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-}
-
-model invitedUser {
-    id String @id @default(uuid())
-    
-    user_id String
-    friendId String 
-     created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }
