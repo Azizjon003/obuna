@@ -89,7 +89,7 @@ scene.enter(async (ctx: any) => {
     const text = "Assalomu alaykum Admin xush kelibsiz";
 
     ctx.telegram.sendMessage(user_id, text, keyboards(admin_keyboard));
-    // return await ctx.scene.enter("admin");
+    return await ctx.scene.enter("admin");
   } else if (enable === "three") {
     ctx.telegram.sendMessage(
       user_id,
