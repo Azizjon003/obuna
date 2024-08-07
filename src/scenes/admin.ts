@@ -171,7 +171,15 @@ async function showMerchants(ctx: any, page: any) {
     ]);
 
     if (merchants.length === 0) {
-      return ctx.reply("Hozircha merchantlar mavjud emas.");
+      const keyboard = [
+        [{ text: "Merchant Qo'shish", callback_data: "add_merchant_user" }],
+        [],
+      ];
+      return ctx.reply("Hozircha merchantlar mavjud emas.", {
+        reply_markup: {
+          inline_keyboard: keyboard,
+        },
+      });
     }
 
     let message = `📊 Merchantlar ro'yxati (${page}-bet):\n\n`;
