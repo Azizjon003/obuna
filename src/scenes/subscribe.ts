@@ -1,5 +1,7 @@
 import { Markup, Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
+import { keyboards } from "../utils/keyboards";
+import { merchant_keyboard } from "./start";
 
 const scene = new Scenes.BaseScene("subscribe");
 
@@ -105,6 +107,17 @@ scene.action(/^confirm_subscribe_/, async (ctx: any) => {
       },
     });
 
+    await prisma.merchantWallet.update({
+      where: {
+        merchantUserId: channelBundle.merchantUserId,
+      },
+      data: {
+        balance: {
+          increment: channelBundle.price,
+        },
+      },
+    });
+
     await ctx.answerCbQuery("Obuna muvaffaqiyatli yaratildi!");
 
     let text = "Tabriklaymiz! Siz muvaffaqiyatli obuna bo'ldingiz.\n\n";
@@ -175,6 +188,7 @@ scene.action(/^confirm_subscribe_/, async (ctx: any) => {
 
   return await ctx.scene.enter("control");
 });
+
 scene.on("message", async (ctx: any) => {
   await ctx.reply("Iltimos, yuqoridagi tugmalardan birini tanlang.");
 });

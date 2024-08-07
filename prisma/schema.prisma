@@ -36,6 +36,7 @@ model User {
   invitedLinks invitedLink[]
   wallet wallet[]
   ChannelBundle ChannelBundle[]
+  merchantWallet MerchantWallet? 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 }
@@ -100,4 +101,24 @@ model invitedLink {
   isActive Boolean @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+}
+
+model MerchantWallet {
+  id             String   @id @default(uuid())
+  merchantUserId String   @unique
+  merchantUser   User     @relation(fields: [merchantUserId], references: [id])
+  balance        Float    @default(0)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  withdrawalRequests WithdrawalRequest[]
+}
+
+model WithdrawalRequest {
+  id             String   @id @default(uuid())
+  walletId       String
+  wallet         MerchantWallet @relation(fields: [walletId], references: [id])
+  amount         Float
+  status         PaymentStatusEnum @default(PENDING)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 }

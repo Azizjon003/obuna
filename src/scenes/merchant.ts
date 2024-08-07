@@ -1,5 +1,8 @@
 import { Markup, Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
+import bot from "../core/bot";
+import { keyboards } from "../utils/keyboards";
+import { merchant_keyboard } from "./start";
 
 const scene = new Scenes.BaseScene("merchant");
 
@@ -73,9 +76,185 @@ scene.hears("To'plamlar ro'yxati", async (ctx) => {
   await showBundles(ctx, 1); // 1-sahifadan boshlaymiz
 });
 
-// scene.on("callback_query", async (ctx: any) => {
-//   console.log(ctx.update.callback_query.data, "any");
-// });
+scene.hears("To'lovlar ro'yhati", async (ctx) => {
+  const userId = ctx.from.id;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { telegram_id: userId.toString() },
+      include: { merchantWallet: true },
+    });
+
+    if (!user || user.role !== "MERCHANT") {
+      return ctx.reply("Sizda bu amalni bajarish uchun huquq yo'q.");
+    }
+
+    if (!user.merchantWallet) {
+      // Merchant uchun wallet yaratish
+      await prisma.merchantWallet.create({
+        data: {
+          merchantUserId: user.id,
+        },
+      });
+      return ctx.reply(
+        "Sizning hisobingiz yaratildi. Iltimos, qaytadan urinib ko'ring."
+      );
+    }
+
+    // Wallet balansini olish
+    const wallet = await prisma.merchantWallet.findUnique({
+      where: { merchantUserId: user.id },
+    });
+
+    if (!wallet) {
+      return ctx.reply("Qaytadan botni ishlatib ko'ring");
+    }
+
+    let message = `Joriy balans: ${wallet.balance} so'm\n\n`;
+    message +=
+      "Pulni yechib olish uchun so'rov yuborish uchun 'Pul yechish' tugmasini bosing.";
+
+    ctx.reply(message, {
+      reply_markup: {
+        keyboard: [
+          [{ text: "Pul yechish" }, { text: "Tarixni ko'rish" }],
+          [{ text: "Orqaga" }],
+        ],
+        resize_keyboard: true,
+      },
+    });
+  } catch (error) {
+    console.error("Xatolik yuz berdi:", error);
+    ctx.reply("Xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.");
+  }
+});
+
+scene.hears("Pul yechish", async (ctx) => {
+  const userId = ctx.from.id;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { telegram_id: userId.toString() },
+      include: { merchantWallet: true },
+    });
+
+    if (!user || user.role !== "MERCHANT" || !user.merchantWallet) {
+      return ctx.reply("Sizda bu amalni bajarish uchun huquq yo'q.");
+    }
+
+    const wallet = user.merchantWallet;
+
+    if (!wallet) {
+      return ctx.reply("Qayta botni ishga tushuring");
+    }
+    if (wallet.balance <= 0) {
+      return ctx.reply("Yechib olish uchun mablag' mavjud emas.");
+    }
+
+    // Yangi pul yechish so'rovini yaratish
+    const withdrawalRequest = await prisma.withdrawalRequest.create({
+      data: {
+        walletId: wallet.id,
+        amount: wallet.balance,
+      },
+    });
+
+    // Walletdan balansni nolga tushirish
+    await prisma.merchantWallet.update({
+      where: { id: wallet.id },
+      data: { balance: 0 },
+    });
+
+    // Adminga xabar yuborish
+    const adminTelegramId = "ADMIN_TELEGRAM_ID";
+    bot.telegram.sendMessage(
+      adminTelegramId,
+      `Yangi pul yechish so'rovi:\n\nMerchant: ${
+        user.name || user.username
+      }\nMiqdor: ${withdrawalRequest.amount} so'm`
+    );
+
+    ctx.reply(
+      `So'rovingiz qabul qilindi. ${withdrawalRequest.amount} so'm miqdoridagi to'lov tez orada amalga oshiriladi.`
+    );
+  } catch (error) {
+    console.error("Xatolik yuz berdi:", error);
+    ctx.reply("Xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.");
+  }
+});
+
+scene.hears("Tarixni ko'rish", async (ctx) => {
+  const userId = ctx.from.id;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { telegram_id: userId.toString() },
+      include: { merchantWallet: true },
+    });
+
+    if (!user || user.role !== "MERCHANT" || !user.merchantWallet) {
+      return ctx.reply("Sizda bu amalni bajarish uchun huquq yo'q.");
+    }
+
+    // So'nggi 10 ta pul yechish so'rovlarini olish
+    const withdrawalRequests = await prisma.withdrawalRequest.findMany({
+      where: { walletId: user.merchantWallet.id },
+      orderBy: { created_at: "desc" },
+      take: 10,
+    });
+
+    if (withdrawalRequests.length === 0) {
+      return ctx.reply("📜 Hozircha pul yechish tarixi mavjud emas.");
+    }
+
+    let message = "📊 Pul yechish tarixi:\n\n";
+
+    withdrawalRequests.forEach((request, index) => {
+      const statusEmoji = {
+        PENDING: "⏳",
+        COMPLETED: "✅",
+        FAILED: "❌",
+      }[request.status];
+
+      message += `${index + 1}. ${statusEmoji} ${request.amount} so'm\n`;
+      message += `   📅 Sana: ${request.created_at.toLocaleString()}\n`;
+      message += `   🏷️ Status: ${getStatusText(request.status)}\n\n`;
+    });
+
+    const currentBalance = user.merchantWallet.balance;
+    message += `\n💰 Joriy balans: ${currentBalance} so'm`;
+
+    ctx.reply(message, {
+      reply_markup: {
+        keyboard: [
+          [{ text: "To'lovlar ro'yhati" }],
+          [{ text: "Pul yechish" }],
+          [{ text: "Orqaga" }],
+        ],
+        resize_keyboard: true,
+      },
+    });
+  } catch (error) {
+    console.error("Xatolik yuz berdi:", error);
+    ctx.reply("Xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.");
+  }
+});
+
+function getStatusText(status: string) {
+  switch (status) {
+    case "PENDING":
+      return "Kutilmoqda";
+    case "COMPLETED":
+      return "Bajarildi";
+    case "FAILED":
+      return "Rad etildi";
+    default:
+      return "Noma'lum";
+  }
+}
+scene.hears("Orqaga", async (ctx) => {
+  ctx.reply("Bosh menyu", keyboards(merchant_keyboard));
+});
 
 // Pagination uchun action
 scene.action(/^bundles_page_(\d+)$/, async (ctx) => {
