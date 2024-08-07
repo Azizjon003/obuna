@@ -371,9 +371,17 @@ export async function showBundles(ctx: any, page: number) {
     });
 
     if (bundles.length === 0 && page === 1) {
+      const inlineKeyboard = [
+        [
+          Markup.button.callback(
+            "➕ Yangi to'plam yaratish",
+            "create_new_bundle"
+          ),
+        ],
+      ];
       return ctx.reply(
         "Sizda hali to'plamlar mavjud emas. Yangi to'plam yaratish uchun 'Yangi to'plam' tugmasini bosing.",
-        Markup.keyboard([["Yangi to'plam yaratish"], ["Orqaga"]]).resize()
+        Markup.inlineKeyboard(inlineKeyboard)
       );
     }
 

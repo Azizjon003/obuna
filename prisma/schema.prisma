@@ -84,6 +84,7 @@ model subscription{
   channelBundleId  String
   channelBundle   ChannelBundle @relation(fields: [channelBundleId], references: [id])
   auto_renew   Boolean               @default(false)
+  price        Float
   status       SubscriptionStatusEnum @default(ACTIVE)
   isActive Boolean @default(true)
   endDate DateTime?

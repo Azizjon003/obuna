@@ -5,7 +5,10 @@ import { keyboards } from "../utils/keyboards";
 const scene = new Scenes.BaseScene("start");
 
 export let keyboard = [["Obunalar", "To'lovlar tarixi"], ["Sozlamalar"]];
-export let admin_keyboard = [["Admin"]];
+export let admin_keyboard = [
+  ["Statistika", "Merchantlar"],
+  ["Payment so'rovlar"],
+];
 export let merchant_keyboard = [
   ["Foydalanuvchilar ro'yxati"],
   ["To'plamlar ro'yxati"],

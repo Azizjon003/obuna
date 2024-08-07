@@ -1,7 +1,5 @@
 import { Markup, Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
-import { keyboards } from "../utils/keyboards";
-import { merchant_keyboard } from "./start";
 
 const scene = new Scenes.BaseScene("subscribe");
 
@@ -104,6 +102,8 @@ scene.action(/^confirm_subscribe_/, async (ctx: any) => {
         user_id: user.id,
         channelBundleId: channelBundle.id,
         status: "ACTIVE",
+        price: channelBundle.price,
+        endDate: new Date(new Date().getTime() + 30 * 86400 * 1000),
       },
     });
 
