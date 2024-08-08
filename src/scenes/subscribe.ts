@@ -101,83 +101,33 @@ scene.action(/^confirm_subscribe_/, async (ctx: any) => {
       data: {
         user_id: user.id,
         channelBundleId: channelBundle.id,
-        status: "ACTIVE",
+        status: "PENDING",
         price: channelBundle.price,
         endDate: new Date(new Date().getTime() + 30 * 86400 * 1000),
       },
     });
 
-    await prisma.merchantWallet.update({
-      where: {
-        merchantUserId: channelBundle.merchantUserId,
-      },
+    const transaction = await prisma.transaction.create({
       data: {
-        balance: {
-          increment: channelBundle.price,
-        },
+        userId: user.id,
+        amount: channelBundle.price,
+        status: "PENDING",
+        subscriptionId: newSubscription.id,
       },
     });
-
-    await ctx.answerCbQuery("Obuna muvaffaqiyatli yaratildi!");
-
-    let text = "Tabriklaymiz! Siz muvaffaqiyatli obuna bo'ldingiz.\n\n";
-    text += "Quyidagi kanallarga qo'shilishingiz mumkin:\n\n";
-
-    const inlineKeyboard = [];
-
-    for (let channel of channelBundle.channels) {
-      let memberStatus;
-      try {
-        const chatMember = await ctx.telegram.getChatMember(
-          channel.telegram_id,
-          user_id
-        );
-        memberStatus = chatMember.status;
-      } catch (error) {
-        console.error(`Error checking member status: ${error}`);
-        memberStatus = "unknown";
-      }
-
-      const isSubscribed = ["creator", "administrator", "member"].includes(
-        memberStatus
-      );
-
-      text += `${channel.name} - ${
-        isSubscribed ? "✅ Obuna bo'lgansiz" : "❌ Obuna bo'lmagansiz"
-      }\n`;
-
-      if (!isSubscribed) {
-        try {
-          const linkText = await ctx.telegram.createChatInviteLink(
-            channel.telegram_id,
-            {
-              creates_join_request: true,
-              name: `Join Request ${new Date().toISOString()}`,
-            }
-          );
-
-          inlineKeyboard.push([
-            Markup.button.url(
-              `Obuna bo'lish: ${channel.name}`,
-              linkText.invite_link
-            ),
-          ]);
-
-          await prisma.invitedLink.create({
-            data: {
-              link: linkText.invite_link,
-              user_id: user.id,
-            },
-          });
-        } catch (error) {
-          console.error(`Error creating invite link: ${error}`);
-        }
-      }
-    }
-
-    await ctx.reply(text, {
-      parse_mode: "Markdown",
-      ...Markup.inlineKeyboard(inlineKeyboard),
+    const invoiceMessage = await ctx.telegram.sendInvoice(user.telegram_id, {
+      title: `Obuna to'lovi: ${channelBundle.name}`,
+      description: `Obuna uchun 1 oylik to'lov summasi`,
+      payload: "bundle_" + transaction.id,
+      provider_token: process.env.TELEGRAM_PAYMENT_TOKEN,
+      start_parameter: "bundle_" + transaction.id,
+      currency: "UZS",
+      prices: [
+        {
+          label: "Bundle Price",
+          amount: Math.round(channelBundle.price * 100),
+        },
+      ],
     });
   } catch (error) {
     console.error("Obuna yaratishda xatolik:", error);
@@ -187,10 +137,6 @@ scene.action(/^confirm_subscribe_/, async (ctx: any) => {
   }
 
   return await ctx.scene.enter("control");
-});
-
-scene.on("message", async (ctx: any) => {
-  await ctx.reply("Iltimos, yuqoridagi tugmalardan birini tanlang.");
 });
 
 export default scene;

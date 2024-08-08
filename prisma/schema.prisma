@@ -23,6 +23,7 @@
     ACTIVE
     EXPIRED
     CANCELLED
+    PENDING
   }
 
   model User {
@@ -37,6 +38,7 @@
     wallet wallet[]
     ChannelBundle ChannelBundle[]
     merchantWallet MerchantWallet? 
+    transactions Transaction[]
     created_at DateTime @default(now())
     updated_at DateTime @updatedAt
   }
@@ -88,11 +90,10 @@
     status       SubscriptionStatusEnum @default(ACTIVE)
     isActive Boolean @default(true)
     endDate DateTime?
+    transactions Transaction[]
     created_at DateTime @default(now())
     updated_at DateTime @updatedAt
   }
-
-
 
   model invitedLink {
     id String @id @default(cuid())
@@ -123,3 +124,15 @@
     created_at     DateTime @default(now())
     updated_at     DateTime @updatedAt
   }
+
+model Transaction {
+  id String @id @default(uuid())
+  subscription subscription @relation(fields: [subscriptionId], references: [id])
+  subscriptionId String
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  amount Float
+  status PaymentStatusEnum @default(PENDING)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
