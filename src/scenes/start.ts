@@ -33,6 +33,23 @@ scene.enter(async (ctx: any) => {
           channels: true,
         },
       });
+
+      const subscription = await prisma.subscription.findFirst({
+        where: {
+          user: {
+            telegram_id: ctx.from.id.toString(),
+          },
+          channelBundleId: channelBundleId,
+          endDate: {
+            gte: new Date(),
+          },
+          status: "ACTIVE",
+        },
+      });
+
+      if (subscription) {
+        return ctx.reply("Bu obuna sizda mavjud");
+      }
       if (channelBundle) {
         const bundleInfo = `
       📦 To'plam: "${channelBundle.name}"

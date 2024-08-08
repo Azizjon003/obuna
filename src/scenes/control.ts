@@ -266,26 +266,74 @@ async function showSubscriptions(ctx: any, page: number) {
   await ctx.reply(text, Markup.inlineKeyboard(inlineKeyboard));
 }
 
-scene.hears("To'lovlar tarixi", async (ctx) => {
+async function showPaymentHistory(ctx: any, page: number) {
   const user = await prisma.user.findFirst({
     where: {
       telegram_id: String(ctx.from.id),
     },
-    include: {},
+    include: {
+      transactions: {
+        where: {
+          status: "COMPLETED",
+        },
+        orderBy: {
+          created_at: "desc",
+        },
+        skip: (page - 1) * ITEMS_PER_PAGE,
+        take: ITEMS_PER_PAGE,
+      },
+    },
   });
-  if (!user) {
-    return ctx.reply("Sizda to'lovlar tarixi yo'q");
-  }
-  const payments: any = [];
 
-  if (payments.length === 0) {
+  if (!user || user.transactions.length === 0) {
     return ctx.reply("Sizda to'lovlar tarixi yo'q");
   }
+
+  const totalPayments = await prisma.transaction.count({
+    where: {
+      userId: user.id,
+      status: "COMPLETED",
+    },
+  });
+
   let text = "To'lovlar tarixi:\n\n";
-  for (let [index, payment] of payments.entries()) {
-    text += `${index + 1}. ${payment.amount} so'm - ${payment.created_at}\n`;
+  const inlineKeyboard = [];
+
+  for (let [index, payment] of user.transactions.entries()) {
+    text += `${(page - 1) * ITEMS_PER_PAGE + index + 1}. ${
+      payment.amount
+    } so'm - ${payment.created_at.toLocaleString()}\n`;
   }
-  ctx.reply(text);
+
+  // Pagination tugmalari
+  const paginationButtons = [];
+  if (page > 1) {
+    paginationButtons.push(
+      Markup.button.callback("⬅️ Oldingi", `payment_history_page_${page - 1}`)
+    );
+  }
+  if (page * ITEMS_PER_PAGE < totalPayments) {
+    paginationButtons.push(
+      Markup.button.callback("Keyingi ➡️", `payment_history_page_${page + 1}`)
+    );
+  }
+  if (paginationButtons.length > 0) {
+    inlineKeyboard.push(paginationButtons);
+  }
+
+  inlineKeyboard.push([Markup.button.callback("Orqaga", "back_to_start")]);
+
+  await ctx.reply(text, Markup.inlineKeyboard(inlineKeyboard));
+}
+
+scene.hears("To'lovlar tarixi", async (ctx) => {
+  await showPaymentHistory(ctx, 1); // 1-sahifadan boshlaymiz
+});
+
+scene.action(/^payment_history_page_(\d+)$/, async (ctx: any) => {
+  const page = ctx.update.callback_query?.data.split("_")[3];
+  await showPaymentHistory(ctx, page);
+  await ctx.answerCbQuery();
 });
 
 scene.hears("Sozlamalar", async (ctx: any) => {

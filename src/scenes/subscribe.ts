@@ -1,4 +1,4 @@
-import { Markup, Scenes } from "telegraf";
+import { Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
 
 const scene = new Scenes.BaseScene("subscribe");
@@ -97,6 +97,8 @@ scene.action(/^confirm_subscribe_/, async (ctx: any) => {
     // Misol uchun: const paymentResult = await processPayment(user_id, bundleId);
 
     console.log("user", user, channelBundle);
+
+    await ctx.deleteMessage();
     const newSubscription = await prisma.subscription.create({
       data: {
         user_id: user.id,
