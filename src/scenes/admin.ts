@@ -1,5 +1,5 @@
 import { RoleEnum } from "@prisma/client";
-import { Scenes } from "telegraf";
+import { Markup, Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
 import { keyboards } from "../utils/keyboards";
 import { admin_keyboard } from "./start";
@@ -130,6 +130,21 @@ scene.hears("Batafsil ma'lumot", async (ctx) => {
       "Batafsil ma'lumotni olishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."
     );
   }
+});
+
+scene.hears("Payment so'rovlar", async (ctx: any) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      telegram_id: ctx.from.id.toString(),
+    },
+  });
+
+  if (!user || user.role !== RoleEnum.ADMIN) {
+    return ctx.reply("Sizda bu ma'lumotlarni ko'rish uchun huquq yo'q.");
+  }
+  ctx.session.page = 1;
+  await showWithdrawalRequests(ctx);
+  return ctx.scene.enter("withdraw");
 });
 
 scene.hears("Orqaga", async (ctx) => {
@@ -447,4 +462,74 @@ scene.action(/^merchant_bundles:(\w+)$/, async (ctx) => {
   await showMerchantBundles(ctx, merchantId, 1);
   ctx.answerCbQuery();
 });
+
+export async function showWithdrawalRequests(ctx: any) {
+  const page = ctx.session.page || 1;
+  const limit = 5;
+  const skip = (page - 1) * limit;
+
+  try {
+    const [withdrawalRequests, totalCount] = await Promise.all([
+      prisma.withdrawalRequest.findMany({
+        skip,
+        take: limit,
+        include: {
+          wallet: {
+            include: {
+              merchantUser: true,
+            },
+          },
+        },
+        orderBy: {
+          created_at: "desc",
+        },
+      }),
+      prisma.withdrawalRequest.count(),
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    let message = `Pul yechib olish so'rovlari (Sahifa ${page}/${totalPages}):\n\n`;
+
+    for (const request of withdrawalRequests) {
+      message += `ID: ${request.id}\n`;
+      message += `Savdogar: ${request.wallet.merchantUser.name}\n`;
+      message += `Miqdor: ${request.amount} so'm\n`;
+      message += `Status: ${request.status}\n`;
+      message += `Sana: ${request.created_at.toLocaleString()}\n\n`;
+    }
+
+    message += `Umumiy so'rovlar soni: ${totalCount}`;
+
+    const keyboard = [];
+    withdrawalRequests.forEach((request) => {
+      keyboard.push([
+        Markup.button.callback(
+          `O'zgartirish: ${request.id}`,
+          `change_status_${request.id}`
+        ),
+      ]);
+    });
+
+    if (page > 1) {
+      keyboard.push([
+        Markup.button.callback("⬅️ Oldingi", `withdrawal_page_${page - 1}`),
+      ]);
+    }
+    if (page < totalPages) {
+      keyboard.push([
+        Markup.button.callback("Keyingi ➡️", `withdrawal_page_${page + 1}`),
+      ]);
+    }
+    keyboard.push([Markup.button.callback("🔙 Orqaga", "admin_menu")]);
+
+    await ctx.reply(message, Markup.inlineKeyboard(keyboard));
+  } catch (error) {
+    console.error("Error fetching withdrawal requests:", error);
+    // await ctx.answerCbQuery(
+    //   `Xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.`
+    // );
+  }
+}
+
 export default scene;
