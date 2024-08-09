@@ -468,4 +468,19 @@ export async function showBundles(ctx: any, page: number) {
   }
 }
 
+scene.hears("Xabar yuborish", async (ctx: any) => {
+  await ctx.reply(
+    "Xabar yuborish turini tanlang:",
+    Markup.inlineKeyboard([
+      [Markup.button.callback("Barcha foydalanuvchilarga", "send_to_all")],
+      [Markup.button.callback("Alohida foydalanuvchiga", "send_to_one")],
+      [Markup.button.callback("🔙 Orqaga", "back_to_start")],
+    ])
+  );
+
+  ctx.scene.enter("sendMessage");
+});
+
+// Xabar yuborish tugmasini faqat adminlar ko'rishi uchun
+
 export default scene;

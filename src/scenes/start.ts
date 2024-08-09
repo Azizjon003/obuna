@@ -8,6 +8,7 @@ export let keyboard = [["Obunalar", "To'lovlar tarixi"], ["Sozlamalar"]];
 export let admin_keyboard = [
   ["Statistika", "Foydalanuvchilar ro'yxati"],
   ["To'plamlar ro'yxati", "To'lovlar ro'yxati"],
+  ["Xabar yuborish"],
 ];
 export let merchant_keyboard = [
   ["Foydalanuvchilar ro'yxati"],
