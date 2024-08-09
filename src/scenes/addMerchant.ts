@@ -43,6 +43,7 @@ scene.on("text", async (ctx: any) => {
     case 2:
       ctx.session.merchant.name = ctx.message.text;
       ctx.session.step = 3;
+      await ctx.reply("Merchant foydalanuvchini telefon raqamini kiriting:");
       break;
     case 3:
       ctx.session.merchant.additionalInfo = ctx.message.text;

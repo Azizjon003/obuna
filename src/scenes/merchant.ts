@@ -309,6 +309,10 @@ scene.action(/^view_bundle_/, async (ctx: any) => {
 scene.action(/^edit_bundle_/, async (ctx: any) => {
   console.log(ctx.update.callback_query.data, "edit nimadir");
   const bundleId = ctx.update.callback_query.data.split("_")[2];
+
+  console.log(bundleId, "bundleId");
+
+  ctx.session.bundleId = bundleId;
   ctx.scene.enter("editBundle", { bundleId });
   await ctx.answerCbQuery();
 });

@@ -28,6 +28,28 @@ scene.enter(async (ctx: any) => {
     `To'plam "${bundle.name}" ni tahrirlash.\nYangi nomni kiriting yoki o'zgartirmaslik uchun "O'tkazib yuborish" deb yozing:`
   );
 });
+scene.on("forward_date", async (ctx: any) => {
+  if (ctx.session.step === 3) {
+    const forwardedMsg = ctx.message;
+    if (
+      forwardedMsg.forward_from_chat &&
+      forwardedMsg.forward_from_chat.type === "channel"
+    ) {
+      const channel = {
+        name: forwardedMsg.forward_from_chat.title,
+        telegram_id: String(forwardedMsg.forward_from_chat.id),
+      };
+      ctx.session.newChannels.push(channel);
+      await ctx.reply(
+        `Kanal "${channel.name}" qo'shildi. Yana kanal qo'shish uchun xabar forward qiling yoki "Tugatish" tugmasini bosing.`
+      );
+    } else {
+      await ctx.reply(
+        "Bu xabar kanaldan emas. Iltimos, kanaldan xabarni forward qiling."
+      );
+    }
+  }
+});
 
 scene.on("text", async (ctx: any) => {
   const step = ctx.session.step;
@@ -87,29 +109,6 @@ scene.on("text", async (ctx: any) => {
         );
       }
       break;
-  }
-});
-
-scene.on("forward_date", async (ctx: any) => {
-  if (ctx.session.step === 3) {
-    const forwardedMsg = ctx.message;
-    if (
-      forwardedMsg.forward_from_chat &&
-      forwardedMsg.forward_from_chat.type === "channel"
-    ) {
-      const channel = {
-        name: forwardedMsg.forward_from_chat.title,
-        telegram_id: String(forwardedMsg.forward_from_chat.id),
-      };
-      ctx.session.newChannels.push(channel);
-      await ctx.reply(
-        `Kanal "${channel.name}" qo'shildi. Yana kanal qo'shish uchun xabar forward qiling yoki "Tugatish" tugmasini bosing.`
-      );
-    } else {
-      await ctx.reply(
-        "Bu xabar kanaldan emas. Iltimos, kanaldan xabarni forward qiling."
-      );
-    }
   }
 });
 

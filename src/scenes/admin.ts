@@ -151,7 +151,7 @@ scene.hears("Orqaga", async (ctx) => {
   ctx.reply("Asosiy menyuga qaytish", keyboards(admin_keyboard));
 });
 
-const MERCHANTS_PER_PAGE = 10;
+const MERCHANTS_PER_PAGE = 3;
 
 scene.hears("Merchantlar", async (ctx) => {
   await showMerchants(ctx, 1);
@@ -265,6 +265,7 @@ scene.action("add_merchant_user", async (ctx: any) => {
 // Callback query handler
 scene.action(/^merchants:(\d+)$/, async (ctx) => {
   const page = parseInt(ctx.match.input.split(":")[1]);
+  await ctx.deleteMessage();
   await showMerchants(ctx, page);
   ctx.answerCbQuery();
 });
