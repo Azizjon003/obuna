@@ -5,6 +5,8 @@ import prisma from "../../prisma/prisma";
 const scene = new Scenes.BaseScene("addMerchant");
 
 scene.hears("/start", async (ctx: any) => {
+  ctx.session.merchant = {};
+  ctx.session.step = 0;
   return await ctx.scene.enter("start");
 });
 
@@ -40,6 +42,10 @@ scene.on("text", async (ctx: any) => {
 
     case 2:
       ctx.session.merchant.name = ctx.message.text;
+      ctx.session.step = 3;
+      break;
+    case 3:
+      ctx.session.merchant.additionalInfo = ctx.message.text;
       await confirmMerchant(ctx);
       break;
 
@@ -55,7 +61,7 @@ Iltimos, merchant ma'lumotlarini tasdiqlang:
 
 Ism: ${name}
 Telegram ID: ${telegram_id}
-Qo'shimcha ma'lumot: ${additionalInfo || "Kiritilmagan"}
+Telefon raqami: ${additionalInfo || "Kiritilmagan"}
 
 Ma'lumotlar to'g'rimi?
   `;
@@ -77,7 +83,9 @@ scene.action("confirm_merchant", async (ctx: any) => {
 scene.action("cancel_merchant", async (ctx: any) => {
   await ctx.answerCbQuery();
   await ctx.reply("Merchant qo'shish bekor qilindi.");
-  return ctx.scene.leave();
+  ctx.session.merchant = {};
+  ctx.session.step = 0;
+  return ctx.scene.enter("admin");
 });
 
 async function createMerchant(ctx: any, merchantData: any) {
@@ -87,6 +95,7 @@ async function createMerchant(ctx: any, merchantData: any) {
         name: merchantData.name,
         telegram_id: merchantData.telegram_id,
         role: RoleEnum.MERCHANT,
+        phone: merchantData.additionalInfo,
         merchantWallet: {
           create: {
             balance: 0,
@@ -109,12 +118,14 @@ async function createMerchant(ctx: any, merchantData: any) {
       await ctx.reply("Merchant Telegram ID'sini kiriting:");
       return;
     }
+    ctx.session.merchant = {};
+    ctx.session.step = 0;
     await ctx.reply(
       "Merchant qo'shishda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
     );
   }
 
-  return ctx.scene.leave();
+  return ctx.scene.enter("admin");
 }
 
 export default scene;
