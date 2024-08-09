@@ -5,6 +5,8 @@ import { showBundles } from "./merchant";
 const scene = new Scenes.BaseScene<Scenes.SceneContext>("editBundle");
 
 scene.hears("/start", async (ctx: any) => {
+  ctx.session.bundle = {};
+  ctx.session.step = 0;
   return await ctx.scene.enter("start");
 });
 
@@ -144,6 +146,8 @@ async function updateBundle(ctx: any, bundleData: any) {
     await ctx.reply(
       "To'plamni yangilashda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
     );
+    ctx.session.bundle = {};
+    ctx.session.step = 0;
   }
 
   await showBundles(ctx, 1);
