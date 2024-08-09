@@ -72,9 +72,6 @@ async function showMerchantStatistics(ctx: any, merchantUserId: string) {
 }
 
 // To'plamlar ro'yxatini ko'rsatish
-scene.hears("To'plamlar ro'yxati", async (ctx) => {
-  await showBundles(ctx, 1); // 1-sahifadan boshlaymiz
-});
 
 scene.hears("To'lovlar ro'yhati", async (ctx) => {
   const userId = ctx.from.id;
@@ -254,6 +251,10 @@ function getStatusText(status: string) {
 }
 scene.hears("Orqaga", async (ctx) => {
   ctx.reply("Bosh menyu", keyboards(merchant_keyboard));
+});
+
+scene.hears("To'plamlar ro'yxati", async (ctx) => {
+  await showBundles(ctx, 1); // 1-sahifadan boshlaymiz
 });
 
 // Pagination uchun action

@@ -1,6 +1,6 @@
 import { Markup, Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
-import { showBundles } from "./merchant";
+import { showBundles } from "./admin";
 
 const scene = new Scenes.BaseScene("createBundle");
 
@@ -129,7 +129,7 @@ async function createBundle(ctx: any, bundleData: any) {
   }
 
   await showBundles(ctx, 1); // Assuming you have this function defined elsewhere
-  return ctx.scene.enter("merchant");
+  return ctx.scene.enter("admin");
 }
 
 export default scene;

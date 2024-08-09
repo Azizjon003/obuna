@@ -1,6 +1,6 @@
 import { Markup, Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
-import { showBundles } from "./merchant";
+import { showBundles } from "./admin";
 
 const scene = new Scenes.BaseScene<Scenes.SceneContext>("editBundle");
 
@@ -150,7 +150,7 @@ async function updateBundle(ctx: any, bundleData: any) {
   }
 
   await showBundles(ctx, 1);
-  return ctx.scene.enter("merchant");
+  return ctx.scene.enter("admin");
 }
 
 export default scene;

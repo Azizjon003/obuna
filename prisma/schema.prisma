@@ -113,17 +113,6 @@
     balance        Float    @default(0)
     created_at     DateTime @default(now())
     updated_at     DateTime @updatedAt
-    withdrawalRequests WithdrawalRequest[]
-  }
-
-  model WithdrawalRequest {
-    id             String   @id @default(uuid())
-    walletId       String
-    wallet         MerchantWallet @relation(fields: [walletId], references: [id])
-    amount         Float
-    status         PaymentStatusEnum @default(PENDING)
-    created_at     DateTime @default(now())
-    updated_at     DateTime @updatedAt
   }
 
 model Transaction {

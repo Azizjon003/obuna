@@ -1,8 +1,5 @@
-import { RoleEnum } from "@prisma/client";
 import { Markup, Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
-import { keyboards } from "../utils/keyboards";
-import { admin_keyboard } from "./start";
 
 const scene = new Scenes.BaseScene("admin");
 
@@ -132,404 +129,342 @@ scene.hears("Batafsil ma'lumot", async (ctx) => {
   }
 });
 
-scene.hears("Payment so'rovlar", async (ctx: any) => {
-  const user = await prisma.user.findUnique({
-    where: {
-      telegram_id: ctx.from.id.toString(),
+scene.hears("To'plamlar ro'yxati", async (ctx) => {
+  await showBundles(ctx, 1); // 1-sahifadan boshlaymiz
+});
+
+scene.hears("To'lovlar ro'yhati", async (ctx) => {});
+
+// Pagination uchun action
+scene.action(/^bundles_page_(\d+)$/, async (ctx) => {
+  const page = parseInt(ctx.match[1]);
+  await showBundles(ctx, page);
+  await ctx.answerCbQuery();
+});
+
+const USERS_PER_PAGE = 10; // Har bir sahifadagi foydalanuvchilar soni
+
+scene.hears("Foydalanuvchilar ro'yxati", async (ctx) => {
+  await showUsersList(ctx, 1); // 1-sahifadan boshlaymiz
+});
+
+scene.action(/^users_list_page_(\d+)$/, async (ctx: any) => {
+  const page = parseInt(ctx.match[1]);
+  await showUsersList(ctx, page);
+  await ctx.answerCbQuery();
+});
+
+async function showUsersList(ctx: any, page: number) {
+  const totalUsers = await prisma.user.count();
+  const activeSubscriptions = await prisma.subscription.count({
+    where: { status: "ACTIVE" },
+  });
+  const totalTransactions = await prisma.transaction.count({
+    where: { status: "COMPLETED" },
+  });
+
+  const users = await prisma.user.findMany({
+    skip: (page - 1) * USERS_PER_PAGE,
+    take: USERS_PER_PAGE,
+    orderBy: { created_at: "desc" },
+    include: {
+      subscriptions: {
+        where: { status: "ACTIVE" },
+      },
+      transactions: {
+        where: { status: "COMPLETED" },
+      },
     },
   });
 
-  if (!user || user.role !== RoleEnum.ADMIN) {
-    return ctx.reply("Sizda bu ma'lumotlarni ko'rish uchun huquq yo'q.");
+  let text = "📊 Foydalanuvchilar statistikasi:\n\n";
+  text += `👥 Jami foydalanuvchilar: ${totalUsers}\n`;
+  text += `🔔 Faol obunalar: ${activeSubscriptions}\n`;
+  text += `💳 Jami to'lovlar: ${totalTransactions}\n\n`;
+  text += "👤 Foydalanuvchilar ro'yxati:\n\n";
+
+  for (const [index, user] of users.entries()) {
+    const userNumber = (page - 1) * USERS_PER_PAGE + index + 1;
+    text += `${userNumber}. ${user.name || user.telegram_id}\n`;
+    text += `   📅 Ro'yxatdan o'tgan sana: ${user.created_at.toLocaleDateString()}\n`;
+    text += `   💳 To'lovlar soni: ${user.transactions.length}\n\n`;
   }
-  ctx.session.page = 1;
-  await showWithdrawalRequests(ctx);
-  return ctx.scene.enter("withdraw");
+
+  const totalPages = Math.ceil(totalUsers / USERS_PER_PAGE);
+  const paginationKeyboard = [];
+
+  if (page > 1) {
+    paginationKeyboard.push(
+      Markup.button.callback("⬅️ Oldingi", `users_list_page_${page - 1}`)
+    );
+  }
+  if (page < totalPages) {
+    paginationKeyboard.push(
+      Markup.button.callback("Keyingi ➡️", `users_list_page_${page + 1}`)
+    );
+  }
+
+  const keyboard = Markup.inlineKeyboard([
+    [...paginationKeyboard],
+    [Markup.button.callback("🔙 Orqaga", "back_to_start")],
+  ]);
+
+  if (ctx.updateType === "callback_query") {
+    await ctx.editMessageText(text, keyboard);
+  } else {
+    await ctx.reply(text, keyboard);
+  }
+}
+
+scene.action("back_to_start", async (ctx: any) => {
+  await ctx.scene.enter("start");
+  await ctx.answerCbQuery();
 });
 
-scene.hears("Orqaga", async (ctx) => {
-  ctx.reply("Asosiy menyuga qaytish", keyboards(admin_keyboard));
+const TRANSACTIONS_PER_PAGE = 10; // Har bir sahifadagi tranzaksiyalar soni
+
+scene.hears("To'lovlar ro'yxati", async (ctx) => {
+  await showTransactionsList(ctx, 1); // 1-sahifadan boshlaymiz
 });
 
-const MERCHANTS_PER_PAGE = 3;
-
-scene.hears("Merchantlar", async (ctx) => {
-  await showMerchants(ctx, 1);
+scene.action(/^transactions_list_page_(\d+)$/, async (ctx: any) => {
+  const page = parseInt(ctx.match[1]);
+  await showTransactionsList(ctx, page);
+  await ctx.answerCbQuery();
 });
 
-async function showMerchants(ctx: any, page: any) {
-  const userId = ctx.from.id;
+async function showTransactionsList(ctx: any, page: number) {
+  const totalTransactions = await prisma.transaction.count();
+  const activeTransactions = await prisma.transaction.count({
+    where: { status: "PENDING" },
+  });
+  const completedTransactions = await prisma.transaction.count({
+    where: { status: "COMPLETED" },
+  });
+
+  const transactions = await prisma.transaction.findMany({
+    skip: (page - 1) * TRANSACTIONS_PER_PAGE,
+    take: TRANSACTIONS_PER_PAGE,
+    orderBy: { created_at: "desc" },
+    include: {
+      user: true,
+    },
+  });
+
+  let text = "💳 To'lovlar statistikasi:\n\n";
+  text += `📊 Jami to'lovlar: ${totalTransactions}\n`;
+  text += `✅ Faol to'lovlar: ${activeTransactions}\n`;
+  text += `🏁 Yakunlangan to'lovlar: ${completedTransactions}\n\n`;
+  text += "🧾 To'lovlar ro'yxati:\n\n";
+
+  for (const [index, transaction] of transactions.entries()) {
+    const transactionNumber = (page - 1) * TRANSACTIONS_PER_PAGE + index + 1;
+    text += `${transactionNumber}. ID: ${transaction.id}\n`;
+    text += `   👤 Foydalanuvchi: ${
+      transaction.user.name || transaction.user.telegram_id
+    }\n`;
+    text += `   💰 Summa: ${transaction.amount} so'm\n`;
+    text += `   📅 Sana: ${transaction.created_at.toLocaleString()}\n`;
+    text += `   📊 Holat: ${
+      transaction.status === "COMPLETED"
+        ? "✅ Faol"
+        : transaction.status === "PENDING"
+        ? "✴️ Kutilmoqda"
+        : "❌ Bekor qilingan"
+    }\n\n`;
+  }
+
+  const totalPages = Math.ceil(totalTransactions / TRANSACTIONS_PER_PAGE);
+  const paginationKeyboard = [];
+
+  if (page > 1) {
+    paginationKeyboard.push(
+      Markup.button.callback("⬅️ Oldingi", `transactions_list_page_${page - 1}`)
+    );
+  }
+  if (page < totalPages) {
+    paginationKeyboard.push(
+      Markup.button.callback("Keyingi ➡️", `transactions_list_page_${page + 1}`)
+    );
+  }
+
+  const keyboard = Markup.inlineKeyboard([
+    [...paginationKeyboard],
+    [Markup.button.callback("🔙 Orqaga", "back_to_start")],
+  ]);
+
+  if (ctx.updateType === "callback_query") {
+    await ctx.editMessageText(text, keyboard);
+  } else {
+    await ctx.reply(text, keyboard);
+  }
+}
+
+// To'plam ma'lumotlarini ko'rish
+scene.action(/^view_bundle_/, async (ctx: any) => {
+  console.log(ctx.update.callback_query.data, "nimadir");
+  const bundleId = ctx.update.callback_query.data.split("_")[2];
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { telegram_id: userId.toString() },
+    const bundle = await prisma.channelBundle.findUnique({
+      where: { id: bundleId },
+      include: { channels: true },
     });
 
-    if (!user || user.role !== "ADMIN") {
-      return ctx.reply("Sizda bu ma'lumotlarni ko'rish uchun huquq yo'q.");
+    if (!bundle) {
+      return ctx.answerCbQuery("To'plam topilmadi");
     }
 
-    const skip = (page - 1) * MERCHANTS_PER_PAGE;
-    const [merchants, totalMerchants] = await Promise.all([
-      prisma.user.findMany({
-        where: { role: "MERCHANT" },
-        skip: skip,
-        take: MERCHANTS_PER_PAGE,
-        orderBy: { created_at: "desc" },
-        include: {
-          _count: {
-            select: { subscriptions: true },
-          },
-        },
-      }),
-      prisma.user.count({ where: { role: "MERCHANT" } }),
-    ]);
+    const botUsername = ctx.botInfo?.username || ctx.me;
+    const shareUrl = `https://t.me/${botUsername}?start=${bundle.id}`;
+    let text = `📦 To'plam: ${bundle.name}\n\n`;
+    text += `💰 Narx: ${bundle.price} so'm\n`;
+    text += `📝 Tavsif: ${bundle.description || "Mavjud emas"}\n\n`;
+    text += `Kanallarga qo'shilish uchun url ${shareUrl}\n`; //share url
+    text += `📢 Kanallar (${bundle.channels.length}):\n`;
+    bundle.channels.forEach((channel, index) => {
+      text += `${index + 1}. ${channel.name} - ${channel.telegram_id}\n`;
+    });
 
-    if (merchants.length === 0) {
-      const keyboard = [
-        [{ text: "Merchant Qo'shish", callback_data: "add_merchant_user" }],
-        [],
+    const inlineKeyboard = [
+      [Markup.button.callback("✏️ Tahrirlash", `edit_bundle_${bundleId}`)],
+      [Markup.button.callback("🗑️ O'chirish", `delete_bundle_${bundleId}`)],
+      [Markup.button.callback("⬅️ Orqaga", "back_to_bundles")],
+    ];
+
+    await ctx.editMessageText(text, Markup.inlineKeyboard(inlineKeyboard));
+    await ctx.answerCbQuery();
+  } catch (error) {
+    console.error("Error in view_bundle:", error);
+    await ctx.answerCbQuery(
+      "Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
+    );
+  }
+});
+
+// To'plamni tahrirlash
+scene.action(/^edit_bundle_/, async (ctx: any) => {
+  console.log(ctx.update.callback_query.data, "edit nimadir");
+  const bundleId = ctx.update.callback_query.data.split("_")[2];
+
+  console.log(bundleId, "bundleId");
+
+  ctx.session.bundleId = bundleId;
+  ctx.scene.enter("editBundle", { bundleId });
+  await ctx.answerCbQuery();
+});
+
+// Yangi to'plam yaratish
+scene.action("create_new_bundle", async (ctx: any) => {
+  ctx.scene.enter("createBundle");
+  await ctx.answerCbQuery();
+});
+
+// To'plamni o'chirish
+scene.action(/^delete_bundle_/, async (ctx: any) => {
+  const bundleId = ctx.update.callback_query.data.split("_")[2];
+
+  try {
+    await prisma.channelBundle.delete({
+      where: { id: bundleId },
+    });
+
+    await ctx.answerCbQuery("To'plam muvaffaqiyatli o'chirildi");
+    await showBundles(ctx, 1);
+  } catch (error) {
+    console.error("Error in delete_bundle:", error);
+    await ctx.answerCbQuery(
+      "To'plamni o'chirishda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
+    );
+  }
+});
+
+// Orqaga qaytish
+scene.action("back_to_bundles", async (ctx) => {
+  await showBundles(ctx, 1);
+  await ctx.answerCbQuery();
+});
+export async function showBundles(ctx: any, page: number) {
+  const ITEMS_PER_PAGE = 5;
+  const merchantUserId = ctx.from.id;
+
+  try {
+    const merchantUser = await prisma.user.findFirst({
+      where: {
+        telegram_id: String(merchantUserId),
+        role: "ADMIN",
+      },
+    });
+
+    if (!merchantUser) {
+      return ctx.reply("Siz merchant user emassiz");
+    }
+
+    const totalBundles = await prisma.channelBundle.count({
+      where: { merchantUserId: merchantUser.id },
+    });
+
+    const bundles = await prisma.channelBundle.findMany({
+      where: { merchantUserId: merchantUser.id },
+      skip: (page - 1) * ITEMS_PER_PAGE,
+      take: ITEMS_PER_PAGE,
+      include: { channels: true },
+    });
+
+    if (bundles.length === 0 && page === 1) {
+      const inlineKeyboard = [
+        [
+          Markup.button.callback(
+            "➕ Yangi to'plam yaratish",
+            "create_new_bundle"
+          ),
+        ],
       ];
-      return ctx.reply("Hozircha merchantlar mavjud emas.", {
-        reply_markup: {
-          inline_keyboard: keyboard,
-        },
-      });
+      return ctx.reply(
+        "Sizda hali to'plamlar mavjud emas. Yangi to'plam yaratish uchun 'Yangi to'plam' tugmasini bosing.",
+        Markup.inlineKeyboard(inlineKeyboard)
+      );
     }
 
-    let message = `📊 Merchantlar ro'yxati (${page}-bet):\n\n`;
+    let text = "📦 Sizning to'plamlaringiz:\n\n";
+    const inlineKeyboard = [];
 
-    merchants.forEach((merchant, index) => {
-      message += `${skip + index + 1}. ${merchant.username || merchant.name}\n`;
-      message += `   📅 Ro'yxatdan o'tgan: ${merchant.created_at.toLocaleDateString()}\n`;
-      message += `   📊 Obunalar soni: ${merchant._count.subscriptions}\n\n`;
+    bundles.forEach((bundle, index) => {
+      text += `${(page - 1) * ITEMS_PER_PAGE + index + 1}. ${bundle.name}\n`;
+      text += `   💰 Narx: ${bundle.price} so'm\n`;
+      text += `   📢 Kanallar soni: ${bundle.channels.length}\n\n`;
+
+      inlineKeyboard.push([
+        Markup.button.callback(`🔍 Ko'rish`, `view_bundle_${bundle.id}`),
+        Markup.button.callback(`✏️ Tahrirlash`, `edit_bundle_${bundle.id}`),
+      ]);
     });
 
-    const totalPages = Math.ceil(totalMerchants / MERCHANTS_PER_PAGE);
-
-    const keyboard = [
-      ...merchants.map((m) => [
-        { text: m.username || m.name, callback_data: `merchant:${m.id}` },
-      ]),
-      [{ text: "Merchant Qo'shish", callback_data: "add_merchant_user" }],
-      [],
-    ];
-
+    // Pagination tugmalari
+    const paginationButtons = [];
     if (page > 1) {
-      keyboard[keyboard.length - 1].push({
-        text: "⬅️ Oldingi",
-        callback_data: `merchants:${page - 1}`,
-      });
+      paginationButtons.push(
+        Markup.button.callback("⬅️ Oldingi", `bundles_page_${page - 1}`)
+      );
     }
-    if (page < totalPages) {
-      keyboard[keyboard.length - 1].push({
-        text: "Keyingi ➡️",
-        callback_data: `merchants:${page + 1}`,
-      });
+    if (page * ITEMS_PER_PAGE < totalBundles) {
+      paginationButtons.push(
+        Markup.button.callback("Keyingi ➡️", `bundles_page_${page + 1}`)
+      );
     }
-
-    keyboard.push([{ text: "Orqaga", callback_data: "back_to_admin_menu" }]);
-
-    ctx.reply(message, {
-      reply_markup: {
-        inline_keyboard: keyboard,
-      },
-    });
-  } catch (error) {
-    console.error("Xatolik yuz berdi:", error);
-    ctx.reply(
-      "Ma'lumotlarni olishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."
-    );
-  }
-}
-
-scene.action("add_merchant_user", async (ctx: any) => {
-  try {
-    const userId = ctx.from.id;
-
-    const user = await prisma.user.findUnique({
-      where: { telegram_id: userId.toString() },
-    });
-
-    if (!user || user.role !== RoleEnum.ADMIN) {
-      return ctx.reply("Sizda bu amalni bajarish uchun huquq yo'q.");
+    if (paginationButtons.length > 0) {
+      inlineKeyboard.push(paginationButtons);
     }
 
-    return ctx.scene.enter("addMerchant");
-  } catch (error) {
-    console.error("Xatolik yuz berdi:", error);
-    ctx.reply("Xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.");
-  }
-});
-
-// Callback query handler
-scene.action(/^merchants:(\d+)$/, async (ctx) => {
-  const page = parseInt(ctx.match.input.split(":")[1]);
-  await ctx.deleteMessage();
-  await showMerchants(ctx, page);
-  ctx.answerCbQuery();
-});
-
-scene.action(/^merchant:/, async (ctx) => {
-  const merchantId = ctx.match.input.split(":")[1];
-  await showMerchantDetails(ctx, merchantId);
-  ctx.answerCbQuery();
-});
-
-scene.action("back_to_admin_menu", async (ctx) => {
-  // Admin menyusiga qaytish logikasi
-  ctx.answerCbQuery();
-});
-
-async function showMerchantDetails(ctx: any, merchantId: string) {
-  try {
-    const merchant = await prisma.user.findUnique({
-      where: { id: merchantId },
-      include: {
-        _count: {
-          select: { subscriptions: true },
-        },
-        merchantWallet: true,
-        ChannelBundle: {
-          include: {
-            channels: true,
-          },
-        },
-      },
-    });
-
-    if (!merchant) {
-      return ctx.editMessageText("Merchant topilmadi.");
-    }
-
-    let message = `👤 Merchant: ${merchant.username || merchant.name}\n`;
-    message += `📅 Ro'yxatdan o'tgan: ${merchant.created_at.toLocaleDateString()}\n`;
-    message += `📊 Obunalar soni: ${merchant._count.subscriptions}\n`;
-    message += `💰 Wallet balansi: ${
-      merchant.merchantWallet?.balance || 0
-    } so'm\n\n`;
-
-    message += "📦 Kanallar to'plamlari:\n";
-    if (merchant.ChannelBundle && merchant.ChannelBundle.length > 0) {
-      merchant.ChannelBundle.forEach((bundle, index) => {
-        message += `\n${index + 1}. ${bundle.name}\n`;
-        message += `   💲 Narxi: ${bundle.price} so'm\n`;
-        message += `   ⏳ Davomiyligi: ${bundle.duration} kun\n`;
-        message += `   📡 Kanallar soni: ${bundle.channels.length}\n`;
-      });
-    } else {
-      message += "Hozircha kanallar to'plami mavjud emas.\n";
-    }
-
-    const keyboard = [
-      [
-        {
-          text: "Kanallar to'plamlarini ko'rish",
-          callback_data: `merchant_bundles:${merchantId}`,
-        },
-      ],
-      [{ text: "Orqaga", callback_data: "merchants:1" }],
-    ];
-
-    ctx.editMessageText(message, {
-      reply_markup: {
-        inline_keyboard: keyboard,
-      },
-    });
-  } catch (error) {
-    console.error("Xatolik yuz berdi:", error);
-    ctx.editMessageText(
-      "Ma'lumotlarni olishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."
-    );
-  }
-}
-const BUNDLES_PER_PAGE = 5;
-// Kanallar to'plamlarini ko'rish uchun yangi handler
-scene.action(/^merchant_bundles:/, async (ctx) => {
-  const merchantId = ctx.match.input.split(":")[1];
-  await showMerchantBundles(ctx, merchantId);
-  ctx.answerCbQuery();
-});
-
-async function showMerchantBundles(
-  ctx: any,
-  merchantId: string,
-  page: number = 1
-) {
-  try {
-    const skip = (page - 1) * BUNDLES_PER_PAGE;
-
-    const merchant = await prisma.user.findUnique({
-      where: { id: merchantId },
-      include: {
-        ChannelBundle: {
-          skip,
-          take: BUNDLES_PER_PAGE,
-          include: {
-            channels: true,
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-        },
-        _count: {
-          select: { ChannelBundle: true },
-        },
-      },
-    });
-
-    if (!merchant) {
-      return ctx.editMessageText("Merchant topilmadi.");
-    }
-
-    let message = `👤 ${
-      merchant.username || merchant.name
-    } ning kanallar to'plamlari (${page}-bet):\n\n`;
-
-    if (merchant.ChannelBundle && merchant.ChannelBundle.length > 0) {
-      merchant.ChannelBundle.forEach((bundle, index) => {
-        message += `📦 ${skip + index + 1}. ${bundle.name}\n`;
-        message += `   💲 Narxi: ${bundle.price} so'm\n`;
-        message += `   ⏳ Davomiyligi: ${bundle.duration} kun\n`;
-        message += `   📡 Kanallar:\n`;
-        bundle.channels.forEach((channel, channelIndex) => {
-          message += `      ${channelIndex + 1}. ${channel.name}\n`;
-        });
-        message += "\n";
-      });
-    } else {
-      message += "Ushbu sahifada kanallar to'plami mavjud emas.\n";
-    }
-
-    const totalBundles = merchant._count.ChannelBundle;
-    const totalPages = Math.ceil(totalBundles / BUNDLES_PER_PAGE);
-
-    const keyboard = [];
-
-    // Pagination buttons
-    if (totalPages > 1) {
-      const paginationRow = [];
-      if (page > 1) {
-        paginationRow.push({
-          text: "⬅️ Oldingi",
-          callback_data: `merchant_bundles:${merchantId}:${page - 1}`,
-        });
-      }
-      if (page < totalPages) {
-        paginationRow.push({
-          text: "Keyingi ➡️",
-          callback_data: `merchant_bundles:${merchantId}:${page + 1}`,
-        });
-      }
-      keyboard.push(paginationRow);
-    }
-
-    keyboard.push([
-      {
-        text: "Merchant ma'lumotlariga qaytish",
-        callback_data: `merchant:${merchantId}`,
-      },
-    ]);
-    keyboard.push([
-      {
-        text: "Merchantlar ro'yxatiga qaytish",
-        callback_data: "merchants:1",
-      },
+    // Yangi to'plam yaratish tugmasi
+    inlineKeyboard.push([
+      Markup.button.callback("➕ Yangi to'plam yaratish", "create_new_bundle"),
     ]);
 
-    ctx.editMessageText(message, {
-      reply_markup: {
-        inline_keyboard: keyboard,
-      },
-    });
+    await ctx.reply(text, Markup.inlineKeyboard(inlineKeyboard));
   } catch (error) {
-    console.error("Xatolik yuz berdi:", error);
-    ctx.editMessageText(
-      "Ma'lumotlarni olishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."
-    );
-  }
-}
-
-// Update the action handler to include the page number
-scene.action(/^merchant_bundles:(\w+):(\d+)$/, async (ctx) => {
-  const [, merchantId, page] = ctx.match.input.split(":");
-  await showMerchantBundles(ctx, merchantId, parseInt(page));
-  ctx.answerCbQuery();
-});
-
-// Update the initial merchant bundles action to start from page 1
-scene.action(/^merchant_bundles:(\w+)$/, async (ctx) => {
-  const merchantId = ctx.match.input.split(":")[1];
-  await showMerchantBundles(ctx, merchantId, 1);
-  ctx.answerCbQuery();
-});
-
-export async function showWithdrawalRequests(ctx: any) {
-  const page = ctx.session.page || 1;
-  const limit = 5;
-  const skip = (page - 1) * limit;
-
-  try {
-    const [withdrawalRequests, totalCount] = await Promise.all([
-      prisma.withdrawalRequest.findMany({
-        skip,
-        take: limit,
-        include: {
-          wallet: {
-            include: {
-              merchantUser: true,
-            },
-          },
-        },
-        orderBy: {
-          created_at: "desc",
-        },
-      }),
-      prisma.withdrawalRequest.count(),
-    ]);
-
-    const totalPages = Math.ceil(totalCount / limit);
-
-    let message = `Pul yechib olish so'rovlari (Sahifa ${page}/${totalPages}):\n\n`;
-
-    for (const request of withdrawalRequests) {
-      message += `ID: ${request.id}\n`;
-      message += `Savdogar: ${request.wallet.merchantUser.name}\n`;
-      message += `Miqdor: ${request.amount} so'm\n`;
-      message += `Status: ${request.status}\n`;
-      message += `Sana: ${request.created_at.toLocaleString()}\n\n`;
-    }
-
-    message += `Umumiy so'rovlar soni: ${totalCount}`;
-
-    const keyboard = [];
-    withdrawalRequests.forEach((request) => {
-      keyboard.push([
-        Markup.button.callback(
-          `O'zgartirish: ${request.id}`,
-          `change_status_${request.id}`
-        ),
-      ]);
-    });
-
-    if (page > 1) {
-      keyboard.push([
-        Markup.button.callback("⬅️ Oldingi", `withdrawal_page_${page - 1}`),
-      ]);
-    }
-    if (page < totalPages) {
-      keyboard.push([
-        Markup.button.callback("Keyingi ➡️", `withdrawal_page_${page + 1}`),
-      ]);
-    }
-    keyboard.push([Markup.button.callback("🔙 Orqaga", "admin_menu")]);
-
-    await ctx.reply(message, Markup.inlineKeyboard(keyboard));
-  } catch (error) {
-    console.error("Error fetching withdrawal requests:", error);
-    // await ctx.answerCbQuery(
-    //   `Xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.`
-    // );
+    console.error("Error in showBundles:", error);
+    await ctx.reply("Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.");
   }
 }
 
