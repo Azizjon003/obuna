@@ -35,6 +35,7 @@
     isActive  Boolean @default(true)
     subscriptions subscription[]
     invitedLinks invitedLink[]
+    phone String?
     wallet wallet[]
     ChannelBundle ChannelBundle[]
     merchantWallet MerchantWallet? 

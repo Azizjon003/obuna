@@ -5,6 +5,8 @@ import { showBundles } from "./merchant";
 const scene = new Scenes.BaseScene("createBundle");
 
 scene.hears("/start", async (ctx: any) => {
+  ctx.session.bundle = {};
+  ctx.session.step = 0;
   return await ctx.scene.enter("start");
 });
 
@@ -89,7 +91,11 @@ scene.on("text", async (ctx: any) => {
       break;
 
     default:
-      await ctx.reply("Noma'lum buyruq. Iltimos, ko'rsatmalarga amal qiling.");
+      ctx.session.bundle = {};
+      ctx.session.step = 0;
+      await ctx.reply(
+        "Noma'lum buyruq. Iltimos, ko'rsatmalarga amal qiling.Qaytadan boshlang"
+      );
   }
 });
 
@@ -115,13 +121,15 @@ async function createBundle(ctx: any, bundleData: any) {
     );
   } catch (error) {
     console.error("Error creating bundle:", error);
+    ctx.session.bundle = {};
+    ctx.session.step = 0;
     await ctx.reply(
       "To'plam yaratishda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
     );
   }
 
   await showBundles(ctx, 1); // Assuming you have this function defined elsewhere
-  return ctx.scene.leave();
+  return ctx.scene.enter("merchant");
 }
 
 export default scene;
