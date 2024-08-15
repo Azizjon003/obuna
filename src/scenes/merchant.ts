@@ -361,7 +361,7 @@ export async function showBundles(ctx: any, page: number) {
     });
 
     if (!merchantUser) {
-      return ctx.reply("Siz merchant user emassiz");
+      return ctx.reply("Вы не являетесь пользователем-мерчантом");
     }
 
     const totalBundles = await prisma.channelBundle.count({
@@ -377,58 +377,53 @@ export async function showBundles(ctx: any, page: number) {
 
     if (bundles.length === 0 && page === 1) {
       const inlineKeyboard = [
-        [
-          Markup.button.callback(
-            "➕ Yangi to'plam yaratish",
-            "create_new_bundle"
-          ),
-        ],
+        [Markup.button.callback("➕ Создать новый набор", "create_new_bundle")],
       ];
       return ctx.reply(
-        "Sizda hali to'plamlar mavjud emas. Yangi to'plam yaratish uchun 'Yangi to'plam' tugmasini bosing.",
+        "У вас пока нет наборов. Нажмите кнопку 'Создать новый набор', чтобы создать новый набор.",
         Markup.inlineKeyboard(inlineKeyboard)
       );
     }
 
-    let text = "📦 Sizning to'plamlaringiz:\n\n";
+    let text = "📦 Ваши наборы:\n\n";
     const inlineKeyboard = [];
 
-    bundles.forEach((bundle, index) => {
+    bundles.forEach((bundle: any, index: any) => {
       text += `${(page - 1) * ITEMS_PER_PAGE + index + 1}. ${bundle.name}\n`;
-      text += `   💰 Narx: ${bundle.price} so'm\n`;
-      text += `   📢 Kanallar soni: ${bundle.channels.length}\n\n`;
+      text += `   💰 Цена: ${bundle.price} сум\n`;
+      text += `   📢 Количество каналов: ${bundle.channels.length}\n\n`;
 
       inlineKeyboard.push([
-        Markup.button.callback(`🔍 Ko'rish`, `view_bundle_${bundle.id}`),
-        Markup.button.callback(`✏️ Tahrirlash`, `edit_bundle_${bundle.id}`),
+        Markup.button.callback(`🔍 Просмотр`, `view_bundle_${bundle.id}`),
+        Markup.button.callback(`✏️ Редактировать`, `edit_bundle_${bundle.id}`),
       ]);
     });
 
-    // Pagination tugmalari
+    // Кнопки пагинации
     const paginationButtons = [];
     if (page > 1) {
       paginationButtons.push(
-        Markup.button.callback("⬅️ Oldingi", `bundles_page_${page - 1}`)
+        Markup.button.callback("⬅️ Предыдущая", `bundles_page_${page - 1}`)
       );
     }
     if (page * ITEMS_PER_PAGE < totalBundles) {
       paginationButtons.push(
-        Markup.button.callback("Keyingi ➡️", `bundles_page_${page + 1}`)
+        Markup.button.callback("Следующая ➡️", `bundles_page_${page + 1}`)
       );
     }
     if (paginationButtons.length > 0) {
       inlineKeyboard.push(paginationButtons);
     }
 
-    // Yangi to'plam yaratish tugmasi
+    // Кнопка создания нового набора
     inlineKeyboard.push([
-      Markup.button.callback("➕ Yangi to'plam yaratish", "create_new_bundle"),
+      Markup.button.callback("➕ Создать новый набор", "create_new_bundle"),
     ]);
 
     await ctx.reply(text, Markup.inlineKeyboard(inlineKeyboard));
   } catch (error) {
-    console.error("Error in showBundles:", error);
-    await ctx.reply("Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.");
+    console.error("Ошибка в showBundles:", error);
+    await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте еще раз.");
   }
 }
 

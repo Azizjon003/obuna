@@ -4,23 +4,23 @@ import enabled from "../utils/enabled";
 import { keyboards } from "../utils/keyboards";
 const scene = new Scenes.BaseScene("start");
 
-export let keyboard = [["Obunalar", "To'lovlar tarixi"], ["Sozlamalar"]];
+export let keyboard = [["Подписки", "История платежей"], ["Настройки"]];
 export let admin_keyboard = [
-  ["Statistika", "Foydalanuvchilar ro'yxati"],
-  ["To'plamlar ro'yxati", "To'lovlar ro'yxati"],
-  ["Xabar yuborish"],
+  ["Статистика", "Список пользователей"],
+  ["Список пакетов", "Список платежей"],
+  ["Отправить сообщение"],
 ];
 export let merchant_keyboard = [
-  ["Foydalanuvchilar ro'yxati"],
-  ["To'plamlar ro'yxati"],
-  ["To'lovlar ro'yhati"],
+  ["Список пользователей"],
+  ["Список пакетов"],
+  ["Список платежей"],
 ];
 
 scene.enter(async (ctx: any) => {
   const user_id = ctx.from?.id;
 
   const user_name = ctx.from?.first_name || ctx.from?.username;
-  const channelBundleId = ctx.startPayload; // Telegram bot start parametri
+  const channelBundleId = ctx.startPayload; // Параметр запуска Telegram бота
 
   const enable = await enabled(String(user_id), String(user_name));
 
@@ -49,38 +49,38 @@ scene.enter(async (ctx: any) => {
       });
 
       if (subscription) {
-        return ctx.reply("Bu obuna sizda mavjud");
+        return ctx.reply("У вас уже есть эта подписка");
       }
       if (channelBundle) {
         const bundleInfo = `
-      📦 To'plam: "${channelBundle.name}"
+      📦 Пакет: "${channelBundle.name}"
       
-      📝 Tavsif: ${channelBundle.description || "Tavsif mavjud emas"}
+      📝 Описание: ${channelBundle.description || "Описание отсутствует"}
       
-      💰 Narx: ${channelBundle.price} so'm
+      💰 Цена: ${channelBundle.price} сум
       
-      📊 Kanallar soni: ${channelBundle.channels.length}
+      📊 Количество каналов: ${channelBundle.channels.length}
       
-      Kanallar ro'yxati:
+      Список каналов:
       ${channelBundle.channels
-        .map((channel, index) => `${index + 1}. ${channel.name}`)
+        .map((channel: any, index: any) => `${index + 1}. ${channel.name}`)
         .join("\n")}
       `;
         const subscribeButton = {
-          text: "Obuna bo'lish",
+          text: "Подписаться",
           callback_data: `subscribe_${channelBundle.id}`,
         };
 
-        // Xabar yuborish
+        // Отправка сообщения
         await ctx.telegram.sendMessage(
           user_id,
-          `Assalomu alaykum! 
+          `Здравствуйте! 
     
-    Siz quyidagi kanallar to'plami haqida so'rov yubordingiz:
+    Вы отправили запрос о следующем пакете каналов:
     
     ${bundleInfo}
     
-    Ushbu to'plamga obuna bo'lishni xohlaysizmi?`,
+    Хотите подписаться на этот пакет?`,
           {
             parse_mode: "Markdown",
             reply_markup: {
@@ -89,35 +89,34 @@ scene.enter(async (ctx: any) => {
           }
         );
 
-        // To'plam ID'sini keyingi qadam uchun saqlash
+        // Сохранение ID пакета для следующего шага
         ctx.scene.state.currentBundleId = channelBundle.id;
         return;
-        // return await ctx.scene.enter("subscribe");
       }
     }
     ctx.telegram.sendMessage(
       user_id,
-      `Assalomu alaykum!Maxsus kanallarga kirish uchun obuna sotib olishinigz kerak`,
+      `Здравствуйте! Для доступа к специальным каналам вам нужно купить подписку`,
       keyboards(keyboard)
     );
 
     console.log("start scene");
     return await ctx.scene.enter("control");
   } else if (enable === "two") {
-    const text = "Assalomu alaykum Admin xush kelibsiz";
+    const text = "Здравствуйте, Админ! Добро пожаловать";
 
     ctx.telegram.sendMessage(user_id, text, keyboards(admin_keyboard));
     return await ctx.scene.enter("admin");
   } else if (enable === "three") {
     ctx.telegram.sendMessage(
       user_id,
-      "Assalomu alaykum.Kechirasiz siz admin tomonidan bloklangansiz"
+      "Здравствуйте. Извините, вы заблокированы администратором"
     );
     return;
   } else if (enable === "four") {
     ctx.telegram.sendMessage(
       user_id,
-      "Assalomu alaykum.Merchant xush kelibsiz",
+      "Здравствуйте, Мерчант! Добро пожаловать",
       keyboards(merchant_keyboard)
     );
 

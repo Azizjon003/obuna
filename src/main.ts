@@ -27,16 +27,16 @@ bot.start(async (ctx: any) => {
 });
 
 bot.hears(
-  ["Yangi Taqdimot", "Balans", "Do'stlarimni taklif qilish", "Bosh menyu"], //  commandlar bot o'chib qolgan vaziyatda user qayta startni  bosganda javob berish uchun
+  ["Новая Презентация", "Баланс", "Пригласить друзей", "Главное меню"], //  commandlar bot o'chib qolgan vaziyatda user qayta startni  bosganda javob berish uchun
   async (ctx: any) => {
-    ctx.reply("Nomalum buyruq.Qayta /start buyrug'ini bosing");
+    ctx.reply("Неизвестная команда. Нажмите команду /start снова");
   }
 );
 
 bot.on("chat_join_request", async (ctx) => {
   console.log("chat_join_request", ctx.chatJoinRequest);
   const invitedLink = String(
-    ctx.chatJoinRequest.invite_link?.invite_link || "nimadir"
+    ctx.chatJoinRequest.invite_link?.invite_link || "что-то"
   );
   const userId = ctx.chatJoinRequest.from.id;
   const user = await prisma.user.findFirst({
@@ -80,7 +80,7 @@ bot.on("chat_join_request", async (ctx) => {
   if (invitedLinks.length === 0) {
     await ctx.telegram.sendMessage(
       user.telegram_id,
-      "Ro'yhatdagi hamma kanallarga obuna bo'ldingiz"
+      "Вы подписались на все каналы в списке"
     );
   }
   const chatId = ctx.chatJoinRequest.chat.id;
@@ -123,7 +123,7 @@ bot.on("successful_payment", async (ctx) => {
   });
 
   if (!user) {
-    return bot.telegram.sendMessage(user_id, "Foydalanuvchi topilmadi");
+    return bot.telegram.sendMessage(user_id, "Пользователь не найден");
   }
 
   const transactionId =
@@ -147,7 +147,7 @@ bot.on("successful_payment", async (ctx) => {
   });
 
   if (!transaction) {
-    return bot.telegram.sendMessage(user_id, "Tranzaksiya topilmadi");
+    return bot.telegram.sendMessage(user_id, "Транзакция не найдена");
   }
 
   const channelBundle = transaction.subscription.channelBundle;
@@ -163,10 +163,10 @@ bot.on("successful_payment", async (ctx) => {
     },
   });
 
-  // await ctx.answerCbQuery("Obuna muvaffaqiyatli yaratildi!");
+  // await ctx.answerCbQuery("Подписка успешно создана!");
 
-  let text = "Tabriklaymiz! Siz muvaffaqiyatli obuna bo'ldingiz.\n\n";
-  text += "Quyidagi kanallarga qo'shilishingiz mumkin:\n\n";
+  let text = "Поздравляем! Вы успешно подписались.\n\n";
+  text += "Вы можете присоединиться к следующим каналам:\n\n";
 
   const inlineKeyboard = [];
 
@@ -188,7 +188,7 @@ bot.on("successful_payment", async (ctx) => {
     );
 
     text += `${channel.name} - ${
-      isSubscribed ? "✅ Obuna bo'lgansiz" : "❌ Obuna bo'lmagansiz"
+      isSubscribed ? "✅ Вы подписаны" : "❌ Вы не подписаны"
     }\n`;
 
     if (!isSubscribed) {
@@ -203,7 +203,7 @@ bot.on("successful_payment", async (ctx) => {
 
         inlineKeyboard.push([
           Markup.button.url(
-            `Obuna bo'lish: ${channel.name}`,
+            `Подписаться: ${channel.name}`,
             linkText.invite_link
           ),
         ]);
@@ -249,7 +249,7 @@ bot.catch(async (err: any, ctx) => {
   if (userId) {
     await bot.telegram.sendMessage(
       userId,
-      "Xatolik yuz berdi. Iltimos qayta urinib ko'ring\n /start buyrug'ini bosib qayta urunib ko'ring"
+      "Произошла ошибка. Пожалуйста, попробуйте снова\n нажмите на команду /start и попробуйте снова"
     );
   }
 
@@ -259,9 +259,14 @@ bot.catch(async (err: any, ctx) => {
 botStart(bot);
 
 process.on("uncaughtException", (error) => {
-  console.log("Ushlanmagan istisno:", error, "Sabab:", new Date());
+  console.log("Необработанное исключение:", error, "Причина:", new Date());
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.log("Ushlanmagan rad etilgan va'da:", promise, "Sabab:", new Date());
+  console.log(
+    "Необработанное отклоненное обещание:",
+    promise,
+    "Причина:",
+    new Date()
+  );
 });

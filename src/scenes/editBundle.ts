@@ -18,16 +18,17 @@ scene.enter(async (ctx: any) => {
   });
 
   if (!bundle) {
-    await ctx.reply("To'plam topilmadi.");
+    await ctx.reply("Пакет не найден.");
     return ctx.scene.leave();
   }
 
   ctx.session.bundle = bundle;
   ctx.session.step = 0;
   await ctx.reply(
-    `To'plam "${bundle.name}" ni tahrirlash.\nYangi nomni kiriting yoki o'zgartirmaslik uchun "O'tkazib yuborish" deb yozing:`
+    `Редактирование пакета "${bundle.name}".\nВведите новое название или напишите "Пропустить", чтобы оставить без изменений:`
   );
 });
+
 scene.on("forward_date", async (ctx: any) => {
   if (ctx.session.step === 3) {
     const forwardedMsg = ctx.message;
@@ -41,11 +42,11 @@ scene.on("forward_date", async (ctx: any) => {
       };
       ctx.session.newChannels.push(channel);
       await ctx.reply(
-        `Kanal "${channel.name}" qo'shildi. Yana kanal qo'shish uchun xabar forward qiling yoki "Tugatish" tugmasini bosing.`
+        `Канал "${channel.name}" добавлен. Перешлите сообщение из другого канала, чтобы добавить его, или нажмите кнопку "Завершить".`
       );
     } else {
       await ctx.reply(
-        "Bu xabar kanaldan emas. Iltimos, kanaldan xabarni forward qiling."
+        "Это сообщение не из канала. Пожалуйста, перешлите сообщение из канала."
       );
     }
   }
@@ -57,37 +58,39 @@ scene.on("text", async (ctx: any) => {
 
   switch (step) {
     case 0:
-      if (ctx.message.text.toLowerCase() !== "o'tkazib yuborish") {
+      if (ctx.message.text.toLowerCase() !== "пропустить") {
         bundleData.name = ctx.message.text;
       }
       await ctx.reply(
-        `Yangi narxni kiriting yoki o'zgartirmaslik uchun "O'tkazib yuborish" deb yozing:`
+        `Введите новую цену или напишите "Пропустить", чтобы оставить без изменений:`
       );
       ctx.session.step = 1;
       break;
 
     case 1:
-      if (ctx.message.text.toLowerCase() !== "o'tkazib yuborish") {
+      if (ctx.message.text.toLowerCase() !== "пропустить") {
         const price = parseFloat(ctx.message.text);
         if (isNaN(price)) {
-          await ctx.reply("Noto'g'ri narx kiritildi. Iltimos, raqam kiriting:");
+          await ctx.reply(
+            "Введена некорректная цена. Пожалуйста, введите число:"
+          );
           return;
         }
         bundleData.price = price;
       }
       await ctx.reply(
-        `Yangi tavsifni kiriting yoki o'zgartirmaslik uchun "O'tkazib yuborish" deb yozing:`
+        `Введите новое описание или напишите "Пропустить", чтобы оставить без изменений:`
       );
       ctx.session.step = 2;
       break;
 
     case 2:
-      if (ctx.message.text.toLowerCase() !== "o'tkazib yuborish") {
+      if (ctx.message.text.toLowerCase() !== "пропустить") {
         bundleData.description = ctx.message.text;
       }
       await ctx.reply(
-        "Yangi kanallarni qo'shish uchun har bir kanaldan bitta xabarni forward qiling. Agar kanallarni o'zgartirmoqchi bo'lmasangiz, \"O'tkazib yuborish\" deb yozing. Kanallarni qo'shishni tugatish uchun \"Tugatish\" tugmasini bosing.",
-        Markup.keyboard([["O'tkazib yuborish"], ["Tugatish"]])
+        'Перешлите по одному сообщению из каждого нового канала, который вы хотите добавить. Если вы не хотите изменять каналы, напишите "Пропустить". Нажмите кнопку "Завершить", когда закончите добавлять каналы.',
+        Markup.keyboard([["Пропустить"], ["Завершить"]])
           .oneTime()
           .resize()
       );
@@ -96,16 +99,16 @@ scene.on("text", async (ctx: any) => {
       break;
 
     case 3:
-      if (ctx.message.text === "O'tkazib yuborish") {
+      if (ctx.message.text === "Пропустить") {
         await updateBundle(ctx, bundleData);
         return;
-      } else if (ctx.message.text === "Tugatish") {
+      } else if (ctx.message.text === "Завершить") {
         bundleData.channels = ctx.session.newChannels;
         await updateBundle(ctx, bundleData);
         return;
       } else {
         await ctx.reply(
-          'Iltimos, kanaldan xabarni forward qiling, "O\'tkazib yuborish" yoki "Tugatish" tugmasini bosing.'
+          'Пожалуйста, перешлите сообщение из канала, нажмите "Пропустить" или "Завершить".'
         );
       }
       break;
@@ -137,13 +140,13 @@ async function updateBundle(ctx: any, bundleData: any) {
     }
 
     await ctx.reply(
-      `To'plam "${bundleData.name}" muvaffaqiyatli yangilandi!`,
+      `Пакет "${bundleData.name}" успешно обновлен!`,
       Markup.removeKeyboard()
     );
   } catch (error) {
-    console.error("Error updating bundle:", error);
+    console.error("Ошибка при обновлении пакета:", error);
     await ctx.reply(
-      "To'plamni yangilashda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
+      "Произошла ошибка при обновлении пакета. Пожалуйста, попробуйте еще раз."
     );
     ctx.session.bundle = {};
     ctx.session.step = 0;

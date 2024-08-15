@@ -1,13 +1,17 @@
 import { Markup, Scenes } from "telegraf";
 import prisma from "../../prisma/prisma";
-
+import bot from "../core/bot";
+const ExcelJS = require("exceljs");
 const scene = new Scenes.BaseScene("admin");
 
 scene.hears("/start", async (ctx: any) => {
   return await ctx.scene.enter("start");
 });
 
-scene.hears("Statistika", async (ctx) => {
+scene.hears("Назад", async (ctx: any) => {
+  return await ctx.scene.enter("start");
+});
+scene.hears("Статистика", async (ctx) => {
   const userId = ctx.from.id;
 
   try {
@@ -16,10 +20,10 @@ scene.hears("Statistika", async (ctx) => {
     });
 
     if (!user || user.role !== "ADMIN") {
-      return ctx.reply("Sizda bu ma'lumotlarni ko'rish uchun huquq yo'q.");
+      return ctx.reply("У вас нет прав для просмотра этой информации.");
     }
 
-    // Statistikani olish
+    // Получение статистики
     const [
       totalUsers,
       totalMerchants,
@@ -40,36 +44,36 @@ scene.hears("Statistika", async (ctx) => {
     ]);
 
     const message = `
-📊 Tizim statistikasi:
+📊 Статистика системы:
 
-👥 Foydalanuvchilar soni: ${totalUsers}
-🛍️ Merchant foydalanuvchilar: ${totalMerchants}
-📡 Kanallar soni: ${totalChannels}
+👥 Количество пользователей: ${totalUsers}
+🛍️ Пользователей-мерчантов: ${totalMerchants}
+📡 Количество каналов: ${totalChannels}
 
-📌 Obunalar:
-   📝 Jami: ${totalSubscriptions}
-   ✅ Faol: ${activeSubscriptions}
+📌 Подписки:
+   📝 Всего: ${totalSubscriptions}
+   ✅ Активных: ${activeSubscriptions}
 
-💰 Umumiy daromad: ${totalRevenue._sum.price || 0} so'm
+💰 Общий доход: ${totalRevenue._sum.price || 0} сум
 
-📅 Sana: ${new Date().toLocaleString()}
+📅 Дата: ${new Date().toLocaleString()}
     `;
 
     ctx.reply(message, {
       reply_markup: {
-        keyboard: [[{ text: "Batafsil ma'lumot" }], [{ text: "Orqaga" }]],
+        keyboard: [[{ text: "Подробная информация" }], [{ text: "Назад" }]],
         resize_keyboard: true,
       },
     });
   } catch (error) {
-    console.error("Xatolik yuz berdi:", error);
+    console.error("Произошла ошибка:", error);
     ctx.reply(
-      "Statistikani olishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."
+      "Произошла ошибка при получении статистики. Пожалуйста, попробуйте позже."
     );
   }
 });
 
-scene.hears("Batafsil ma'lumot", async (ctx) => {
+scene.hears("Подробная информация", async (ctx) => {
   const userId = ctx.from.id;
 
   try {
@@ -78,26 +82,26 @@ scene.hears("Batafsil ma'lumot", async (ctx) => {
     });
 
     if (!user || user.role !== "ADMIN") {
-      return ctx.reply("Sizda bu ma'lumotlarni ko'rish uchun huquq yo'q.");
+      return ctx.reply("У вас нет прав для просмотра этой информации.");
     }
 
-    // So'nggi 5 ta obunani olish
+    // Получение последних 5 подписок
     const recentSubscriptions = await prisma.subscription.findMany({
       take: 5,
       orderBy: { created_at: "desc" },
       include: { user: true, channelBundle: true },
     });
 
-    let message = "📋 So'nggi 5 ta obuna:\n\n";
+    let message = "📋 Последние 5 подписок:\n\n";
 
     for (const sub of recentSubscriptions) {
-      message += `👤 Foydalanuvchi: ${sub.user.username || sub.user.name}\n`;
-      message += `📦 Paket: ${sub.channelBundle.name}\n`;
-      message += `💲 Narx: ${sub.price} so'm\n`;
-      message += `📅 Sana: ${sub.created_at.toLocaleString()}\n\n`;
+      message += `👤 Пользователь: ${sub.user.username || sub.user.name}\n`;
+      message += `📦 Пакет: ${sub.channelBundle.name}\n`;
+      message += `💲 Цена: ${sub.price} сум\n`;
+      message += `📅 Дата: ${sub.created_at.toLocaleString()}\n\n`;
     }
 
-    // Top 3 merchant
+    // Топ 3 мерчанта
     const topMerchants = await prisma.user.findMany({
       where: { role: "MERCHANT" },
       take: 3,
@@ -113,39 +117,94 @@ scene.hears("Batafsil ma'lumot", async (ctx) => {
       },
     });
 
-    message += "🏆 Top 3 merchant:\n\n";
-
-    for (const merchant of topMerchants) {
-      message += `👤 ${merchant.username || merchant.name}\n`;
-      message += `📊 Obunalar soni: ${merchant._count.subscriptions}\n\n`;
-    }
-
     ctx.reply(message);
   } catch (error) {
-    console.error("Xatolik yuz berdi:", error);
+    console.error("Произошла ошибка:", error);
     ctx.reply(
-      "Batafsil ma'lumotni olishda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."
+      "Произошла ошибка при получении подробной информации. Пожалуйста, попробуйте позже."
     );
   }
 });
 
-scene.hears("To'plamlar ro'yxati", async (ctx) => {
-  await showBundles(ctx, 1); // 1-sahifadan boshlaymiz
+scene.hears("Список пакетов", async (ctx) => {
+  await showBundles(ctx, 1); // Начинаем с 1-й страницы
 });
 
-scene.hears("To'lovlar ro'yhati", async (ctx) => {});
+bot.hears("Список платежей", async (ctx) => {
+  try {
+    // To'lov qilingan tranzaksiyalarni olish
+    const completedTransactions = await prisma.transaction.findMany({
+      where: {
+        status: "COMPLETED",
+      },
+      include: {
+        user: true,
+        subscription: {
+          include: {
+            channelBundle: true,
+          },
+        },
+      },
+    });
 
-// Pagination uchun action
+    // Excel fayl yaratish
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Completed Payments");
+
+    // Ustunlar qo'shish
+    worksheet.columns = [
+      { header: "Transaction ID", key: "id", width: 36 },
+      { header: "User", key: "user", width: 20 },
+      { header: "Amount", key: "amount", width: 15 },
+      { header: "Channel Bundle", key: "channelBundle", width: 30 },
+      { header: "Date", key: "date", width: 20 },
+    ];
+
+    // Ma'lumotlarni Excel fayliga yozish
+    completedTransactions.forEach((transaction) => {
+      worksheet.addRow({
+        id: transaction.id,
+        user:
+          transaction.user.name ||
+          transaction.user.username ||
+          transaction.user.telegram_id,
+        amount: transaction.amount,
+        channelBundle: transaction.subscription.channelBundle.name,
+        date: transaction.created_at.toLocaleString(),
+      });
+    });
+
+    // Excel faylini saqlash
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    // Faylni foydalanuvchiga yuborish
+    await ctx.replyWithDocument(
+      {
+        source: buffer,
+        filename: "completed_payments.xlsx",
+      },
+      {
+        caption: "To'lov qilingan tranzaksiyalar ro'yxati",
+      }
+    );
+  } catch (error) {
+    console.error("Error generating payments report:", error);
+    await ctx.reply(
+      "Hisobot tayyorlashda xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring."
+    );
+  }
+});
+// Действие для пагинации
 scene.action(/^bundles_page_(\d+)$/, async (ctx) => {
   const page = parseInt(ctx.match[1]);
   await showBundles(ctx, page);
   await ctx.answerCbQuery();
 });
 
-const USERS_PER_PAGE = 10; // Har bir sahifadagi foydalanuvchilar soni
+const USERS_PER_PAGE = 10; // Количество пользователей на каждой странице
 
-scene.hears("Foydalanuvchilar ro'yxati", async (ctx) => {
-  await showUsersList(ctx, 1); // 1-sahifadan boshlaymiz
+scene.hears("Список пользователей", async (ctx) => {
+  await showUsersList(ctx, 1); // Начинаем с 1-й страницы
 });
 
 scene.action(/^users_list_page_(\d+)$/, async (ctx: any) => {
@@ -177,17 +236,17 @@ async function showUsersList(ctx: any, page: number) {
     },
   });
 
-  let text = "📊 Foydalanuvchilar statistikasi:\n\n";
-  text += `👥 Jami foydalanuvchilar: ${totalUsers}\n`;
-  text += `🔔 Faol obunalar: ${activeSubscriptions}\n`;
-  text += `💳 Jami to'lovlar: ${totalTransactions}\n\n`;
-  text += "👤 Foydalanuvchilar ro'yxati:\n\n";
+  let text = "📊 Статистика пользователей:\n\n";
+  text += `👥 Всего пользователей: ${totalUsers}\n`;
+  text += `🔔 Активные подписки: ${activeSubscriptions}\n`;
+  text += `💳 Всего платежей: ${totalTransactions}\n\n`;
+  text += "👤 Список пользователей:\n\n";
 
   for (const [index, user] of users.entries()) {
     const userNumber = (page - 1) * USERS_PER_PAGE + index + 1;
     text += `${userNumber}. ${user.name || user.telegram_id}\n`;
-    text += `   📅 Ro'yxatdan o'tgan sana: ${user.created_at.toLocaleDateString()}\n`;
-    text += `   💳 To'lovlar soni: ${user.transactions.length}\n\n`;
+    text += `   📅 Дата регистрации: ${user.created_at.toLocaleDateString()}\n`;
+    text += `   💳 Количество платежей: ${user.transactions.length}\n\n`;
   }
 
   const totalPages = Math.ceil(totalUsers / USERS_PER_PAGE);
@@ -195,18 +254,18 @@ async function showUsersList(ctx: any, page: number) {
 
   if (page > 1) {
     paginationKeyboard.push(
-      Markup.button.callback("⬅️ Oldingi", `users_list_page_${page - 1}`)
+      Markup.button.callback("⬅️ Предыдущая", `users_list_page_${page - 1}`)
     );
   }
   if (page < totalPages) {
     paginationKeyboard.push(
-      Markup.button.callback("Keyingi ➡️", `users_list_page_${page + 1}`)
+      Markup.button.callback("Следующая ➡️", `users_list_page_${page + 1}`)
     );
   }
 
   const keyboard = Markup.inlineKeyboard([
     [...paginationKeyboard],
-    [Markup.button.callback("🔙 Orqaga", "back_to_start")],
+    [Markup.button.callback("🔙 Назад", "back_to_start")],
   ]);
 
   if (ctx.updateType === "callback_query") {
@@ -221,10 +280,10 @@ scene.action("back_to_start", async (ctx: any) => {
   await ctx.answerCbQuery();
 });
 
-const TRANSACTIONS_PER_PAGE = 10; // Har bir sahifadagi tranzaksiyalar soni
+const TRANSACTIONS_PER_PAGE = 10; // Количество транзакций на каждой странице
 
-scene.hears("To'lovlar ro'yxati", async (ctx) => {
-  await showTransactionsList(ctx, 1); // 1-sahifadan boshlaymiz
+scene.hears("Список платежей", async (ctx) => {
+  await showTransactionsList(ctx, 1); // Начинаем с 1-й страницы
 });
 
 scene.action(/^transactions_list_page_(\d+)$/, async (ctx: any) => {
@@ -251,26 +310,26 @@ async function showTransactionsList(ctx: any, page: number) {
     },
   });
 
-  let text = "💳 To'lovlar statistikasi:\n\n";
-  text += `📊 Jami to'lovlar: ${totalTransactions}\n`;
-  text += `✅ Faol to'lovlar: ${activeTransactions}\n`;
-  text += `🏁 Yakunlangan to'lovlar: ${completedTransactions}\n\n`;
-  text += "🧾 To'lovlar ro'yxati:\n\n";
+  let text = "💳 Статистика платежей:\n\n";
+  text += `📊 Всего платежей: ${totalTransactions}\n`;
+  text += `✅ Активные платежи: ${activeTransactions}\n`;
+  text += `🏁 Завершенные платежи: ${completedTransactions}\n\n`;
+  text += "🧾 Список платежей:\n\n";
 
   for (const [index, transaction] of transactions.entries()) {
     const transactionNumber = (page - 1) * TRANSACTIONS_PER_PAGE + index + 1;
     text += `${transactionNumber}. ID: ${transaction.id}\n`;
-    text += `   👤 Foydalanuvchi: ${
+    text += `   👤 Пользователь: ${
       transaction.user.name || transaction.user.telegram_id
     }\n`;
-    text += `   💰 Summa: ${transaction.amount} so'm\n`;
-    text += `   📅 Sana: ${transaction.created_at.toLocaleString()}\n`;
-    text += `   📊 Holat: ${
+    text += `   💰 Сумма: ${transaction.amount} сум\n`;
+    text += `   📅 Дата: ${transaction.created_at.toLocaleString()}\n`;
+    text += `   📊 Статус: ${
       transaction.status === "COMPLETED"
-        ? "✅ Faol"
+        ? "✅ Активный"
         : transaction.status === "PENDING"
-        ? "✴️ Kutilmoqda"
-        : "❌ Bekor qilingan"
+        ? "✴️ Ожидает"
+        : "❌ Отменен"
     }\n\n`;
   }
 
@@ -279,18 +338,24 @@ async function showTransactionsList(ctx: any, page: number) {
 
   if (page > 1) {
     paginationKeyboard.push(
-      Markup.button.callback("⬅️ Oldingi", `transactions_list_page_${page - 1}`)
+      Markup.button.callback(
+        "⬅️ Предыдущая",
+        `transactions_list_page_${page - 1}`
+      )
     );
   }
   if (page < totalPages) {
     paginationKeyboard.push(
-      Markup.button.callback("Keyingi ➡️", `transactions_list_page_${page + 1}`)
+      Markup.button.callback(
+        "Следующая ➡️",
+        `transactions_list_page_${page + 1}`
+      )
     );
   }
 
   const keyboard = Markup.inlineKeyboard([
     [...paginationKeyboard],
-    [Markup.button.callback("🔙 Orqaga", "back_to_start")],
+    [Markup.button.callback("🔙 Назад", "back_to_start")],
   ]);
 
   if (ctx.updateType === "callback_query") {
@@ -300,9 +365,9 @@ async function showTransactionsList(ctx: any, page: number) {
   }
 }
 
-// To'plam ma'lumotlarini ko'rish
+// Просмотр информации о наборе
 scene.action(/^view_bundle_/, async (ctx: any) => {
-  console.log(ctx.update.callback_query.data, "nimadir");
+  console.log(ctx.update.callback_query.data, "что-то");
   const bundleId = ctx.update.callback_query.data.split("_")[2];
 
   try {
@@ -312,39 +377,39 @@ scene.action(/^view_bundle_/, async (ctx: any) => {
     });
 
     if (!bundle) {
-      return ctx.answerCbQuery("To'plam topilmadi");
+      return ctx.answerCbQuery("Набор не найден");
     }
 
     const botUsername = ctx.botInfo?.username || ctx.me;
     const shareUrl = `https://t.me/${botUsername}?start=${bundle.id}`;
-    let text = `📦 To'plam: ${bundle.name}\n\n`;
-    text += `💰 Narx: ${bundle.price} so'm\n`;
-    text += `📝 Tavsif: ${bundle.description || "Mavjud emas"}\n\n`;
-    text += `Kanallarga qo'shilish uchun url ${shareUrl}\n`; //share url
-    text += `📢 Kanallar (${bundle.channels.length}):\n`;
-    bundle.channels.forEach((channel, index) => {
+    let text = `📦 Набор: ${bundle.name}\n\n`;
+    text += `💰 Цена: ${bundle.price} сум\n`;
+    text += `📝 Описание: ${bundle.description || "Отсутствует"}\n\n`;
+    text += `URL для присоединения к каналам: ${shareUrl}\n`; //share url
+    text += `📢 Каналы (${bundle.channels.length}):\n`;
+    bundle.channels.forEach((channel: any, index: number) => {
       text += `${index + 1}. ${channel.name} - ${channel.telegram_id}\n`;
     });
 
     const inlineKeyboard = [
-      [Markup.button.callback("✏️ Tahrirlash", `edit_bundle_${bundleId}`)],
-      [Markup.button.callback("🗑️ O'chirish", `delete_bundle_${bundleId}`)],
-      [Markup.button.callback("⬅️ Orqaga", "back_to_bundles")],
+      [Markup.button.callback("✏️ Редактировать", `edit_bundle_${bundleId}`)],
+      [Markup.button.callback("🗑️ Удалить", `delete_bundle_${bundleId}`)],
+      [Markup.button.callback("⬅️ Назад", "back_to_bundles")],
     ];
 
     await ctx.editMessageText(text, Markup.inlineKeyboard(inlineKeyboard));
     await ctx.answerCbQuery();
   } catch (error) {
-    console.error("Error in view_bundle:", error);
+    console.error("Ошибка в view_bundle:", error);
     await ctx.answerCbQuery(
-      "Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
+      "Произошла ошибка. Пожалуйста, попробуйте еще раз."
     );
   }
 });
 
-// To'plamni tahrirlash
+// Редактирование набора
 scene.action(/^edit_bundle_/, async (ctx: any) => {
-  console.log(ctx.update.callback_query.data, "edit nimadir");
+  console.log(ctx.update.callback_query.data, "edit что-то");
   const bundleId = ctx.update.callback_query.data.split("_")[2];
 
   console.log(bundleId, "bundleId");
@@ -354,7 +419,7 @@ scene.action(/^edit_bundle_/, async (ctx: any) => {
   await ctx.answerCbQuery();
 });
 
-// Yangi to'plam yaratish
+// Создание нового набора
 scene.action("create_new_bundle", async (ctx: any) => {
   ctx.scene.enter("createBundle");
   await ctx.answerCbQuery();
@@ -369,21 +434,22 @@ scene.action(/^delete_bundle_/, async (ctx: any) => {
       where: { id: bundleId },
     });
 
-    await ctx.answerCbQuery("To'plam muvaffaqiyatli o'chirildi");
+    await ctx.answerCbQuery("Набор успешно удален");
     await showBundles(ctx, 1);
   } catch (error) {
-    console.error("Error in delete_bundle:", error);
+    console.error("Ошибка в delete_bundle:", error);
     await ctx.answerCbQuery(
-      "To'plamni o'chirishda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
+      "Произошла ошибка при удалении набора. Пожалуйста, попробуйте еще раз."
     );
   }
 });
 
-// Orqaga qaytish
+// Возврат назад
 scene.action("back_to_bundles", async (ctx) => {
   await showBundles(ctx, 1);
   await ctx.answerCbQuery();
 });
+
 export async function showBundles(ctx: any, page: number) {
   const ITEMS_PER_PAGE = 5;
   const merchantUserId = ctx.from.id;
@@ -397,7 +463,7 @@ export async function showBundles(ctx: any, page: number) {
     });
 
     if (!merchantUser) {
-      return ctx.reply("Siz merchant user emassiz");
+      return ctx.reply("Вы не являетесь пользователем-мерчантом");
     }
 
     const totalBundles = await prisma.channelBundle.count({
@@ -413,74 +479,69 @@ export async function showBundles(ctx: any, page: number) {
 
     if (bundles.length === 0 && page === 1) {
       const inlineKeyboard = [
-        [
-          Markup.button.callback(
-            "➕ Yangi to'plam yaratish",
-            "create_new_bundle"
-          ),
-        ],
+        [Markup.button.callback("➕ Создать новый набор", "create_new_bundle")],
       ];
       return ctx.reply(
-        "Sizda hali to'plamlar mavjud emas. Yangi to'plam yaratish uchun 'Yangi to'plam' tugmasini bosing.",
+        "У вас пока нет наборов. Нажмите кнопку 'Создать новый набор', чтобы создать новый набор.",
         Markup.inlineKeyboard(inlineKeyboard)
       );
     }
 
-    let text = "📦 Sizning to'plamlaringiz:\n\n";
+    let text = "📦 Ваши наборы:\n\n";
     const inlineKeyboard = [];
 
-    bundles.forEach((bundle, index) => {
+    bundles.forEach((bundle: any, index: any) => {
       text += `${(page - 1) * ITEMS_PER_PAGE + index + 1}. ${bundle.name}\n`;
-      text += `   💰 Narx: ${bundle.price} so'm\n`;
-      text += `   📢 Kanallar soni: ${bundle.channels.length}\n\n`;
+      text += `   💰 Цена: ${bundle.price} сум\n`;
+      text += `   📢 Количество каналов: ${bundle.channels.length}\n\n`;
 
       inlineKeyboard.push([
-        Markup.button.callback(`🔍 Ko'rish`, `view_bundle_${bundle.id}`),
-        Markup.button.callback(`✏️ Tahrirlash`, `edit_bundle_${bundle.id}`),
+        Markup.button.callback(`🔍 Просмотр`, `view_bundle_${bundle.id}`),
+        Markup.button.callback(`✏️ Редактировать`, `edit_bundle_${bundle.id}`),
       ]);
     });
 
-    // Pagination tugmalari
+    // Кнопки пагинации
     const paginationButtons = [];
     if (page > 1) {
       paginationButtons.push(
-        Markup.button.callback("⬅️ Oldingi", `bundles_page_${page - 1}`)
+        Markup.button.callback("⬅️ Предыдущая", `bundles_page_${page - 1}`)
       );
     }
     if (page * ITEMS_PER_PAGE < totalBundles) {
       paginationButtons.push(
-        Markup.button.callback("Keyingi ➡️", `bundles_page_${page + 1}`)
+        Markup.button.callback("Следующая ➡️", `bundles_page_${page + 1}`)
       );
     }
     if (paginationButtons.length > 0) {
       inlineKeyboard.push(paginationButtons);
     }
 
-    // Yangi to'plam yaratish tugmasi
+    // Кнопка создания нового набора
     inlineKeyboard.push([
-      Markup.button.callback("➕ Yangi to'plam yaratish", "create_new_bundle"),
+      Markup.button.callback("➕ Создать новый набор", "create_new_bundle"),
     ]);
 
     await ctx.reply(text, Markup.inlineKeyboard(inlineKeyboard));
   } catch (error) {
-    console.error("Error in showBundles:", error);
-    await ctx.reply("Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.");
+    console.error("Ошибка в showBundles:", error);
+    await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте еще раз.");
   }
 }
 
-scene.hears("Xabar yuborish", async (ctx: any) => {
+scene.hears("Отправить сообщение", async (ctx: any) => {
   await ctx.reply(
-    "Xabar yuborish turini tanlang:",
+    "Выберите тип отправки сообщения:",
     Markup.inlineKeyboard([
-      [Markup.button.callback("Barcha foydalanuvchilarga", "send_to_all")],
-      [Markup.button.callback("Alohida foydalanuvchiga", "send_to_one")],
-      [Markup.button.callback("🔙 Orqaga", "back_to_start")],
+      [Markup.button.callback("Всем пользователям", "send_to_all")],
+      [Markup.button.callback("Отдельному пользователю", "send_to_one")],
+      [Markup.button.callback("🔙 Назад", "back_to_start")],
     ])
   );
 
   ctx.scene.enter("sendMessage");
 });
 
-// Xabar yuborish tugmasini faqat adminlar ko'rishi uchun
+// Для отображения кнопки отправки сообщения только администраторам
 
 export default scene;

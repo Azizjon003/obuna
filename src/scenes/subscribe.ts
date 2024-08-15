@@ -17,10 +17,10 @@ scene.enter(async (ctx: any) => {
   });
 
   if (!user) {
-    return ctx.reply("Sizda obuna bo'lgan kanallar yo'q");
+    return ctx.reply("У вас нет подписанных каналов");
   }
   if (!bundleId) {
-    await ctx.reply("Xatolik yuz berdi. Iltimos, boshidan boshlang.");
+    await ctx.reply("Произошла ошибка. Пожалуйста, начните сначала.");
     return await ctx.scene.enter("control");
   }
 
@@ -30,7 +30,7 @@ scene.enter(async (ctx: any) => {
   });
 
   if (!channelBundle) {
-    await ctx.reply("Kechirasiz, so'ralgan to'plam topilmadi.");
+    await ctx.reply("Извините, запрошенный пакет не найден.");
     return await ctx.scene.enter("control");
   }
 
@@ -43,7 +43,7 @@ scene.enter(async (ctx: any) => {
   });
 
   if (subscriptionExists) {
-    await ctx.reply("Siz allaqachon ushbu to'plamga obuna bo'lgansiz.");
+    await ctx.reply("Вы уже подписаны на этот пакет.");
     return await ctx.scene.enter("control");
   }
 
@@ -51,18 +51,18 @@ scene.enter(async (ctx: any) => {
     inline_keyboard: [
       [
         {
-          text: "Ha, obuna bo'lish",
+          text: "Да, подписаться",
           callback_data: `confirm_subscribe_${bundleId}`,
         },
-        { text: "Yo'q, bekor qilish", callback_data: "cancel_subscribe" },
+        { text: "Нет, отменить", callback_data: "cancel_subscribe" },
       ],
     ],
   };
 
   await ctx.reply(
-    `Siz "${channelBundle.name}" to'plamiga obuna bo'lmoqchimisiz?\n` +
-      `Narxi: ${channelBundle.price} so'm\n` +
-      `Obuna bo'lishni tasdiqlaysizmi?`,
+    `Вы хотите подписаться на пакет "${channelBundle.name}"?\n` +
+      `Цена: ${channelBundle.price} сум\n` +
+      `Подтверждаете подписку?`,
     { reply_markup: confirmKeyboard }
   );
 });
@@ -79,7 +79,7 @@ scene.action(/^confirm_subscribe_/, async (ctx: any) => {
     });
 
     if (!user) {
-      await ctx.answerCbQuery("Foydalanuvchi topilmadi.");
+      await ctx.answerCbQuery("Пользователь не найден.");
       return await ctx.scene.enter("control");
     }
 
@@ -89,12 +89,12 @@ scene.action(/^confirm_subscribe_/, async (ctx: any) => {
     });
 
     if (!channelBundle) {
-      await ctx.answerCbQuery("Kanal to'plami topilmadi.");
+      await ctx.answerCbQuery("Пакет каналов не найден.");
       return await ctx.scene.enter("control");
     }
 
-    // To'lov jarayonini bu yerda amalga oshiring
-    // Misol uchun: const paymentResult = await processPayment(user_id, bundleId);
+    // Здесь реализуйте процесс оплаты
+    // Например: const paymentResult = await processPayment(user_id, bundleId);
 
     console.log("user", user, channelBundle);
 
@@ -118,23 +118,23 @@ scene.action(/^confirm_subscribe_/, async (ctx: any) => {
       },
     });
     const invoiceMessage = await ctx.telegram.sendInvoice(user.telegram_id, {
-      title: `Obuna to'lovi: ${channelBundle.name}`,
-      description: `Obuna uchun 1 oylik to'lov summasi`,
+      title: `Оплата подписки: ${channelBundle.name}`,
+      description: `Сумма оплаты за 1 месяц подписки`,
       payload: "bundle_" + transaction.id,
       provider_token: process.env.TELEGRAM_PAYMENT_TOKEN,
       start_parameter: "bundle_" + transaction.id,
       currency: "UZS",
       prices: [
         {
-          label: "Bundle Price",
+          label: "Цена пакета",
           amount: Math.round(channelBundle.price * 100),
         },
       ],
     });
   } catch (error) {
-    console.error("Obuna yaratishda xatolik:", error);
+    console.error("Ошибка при создании подписки:", error);
     await ctx.answerCbQuery(
-      "Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
+      "Произошла ошибка. Пожалуйста, попробуйте еще раз."
     );
   }
 

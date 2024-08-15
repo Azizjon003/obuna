@@ -10,14 +10,14 @@ scene.hears("/start", async (ctx: any) => {
 scene.action("send_to_all", async (ctx: any) => {
   ctx.scene.state.sendMode = "all";
   await ctx.editMessageText(
-    "Barcha foydalanuvchilarga yuboriladigan xabarni kiriting:"
+    "Введите сообщение для отправки всем пользователям:"
   );
 });
 
 scene.action("send_to_one", async (ctx: any) => {
   ctx.scene.state.sendMode = "one";
   await ctx.editMessageText(
-    "Xabar yuboriladigan foydalanuvchining Telegram ID'sini kiriting:"
+    "Введите Telegram ID пользователя, которому нужно отправить сообщение:"
   );
 });
 
@@ -34,7 +34,7 @@ scene.on("text", async (ctx: any) => {
     } else {
       ctx.scene.state.waitingForUserId = true;
       ctx.scene.state.messageText = ctx.message.text;
-      await ctx.reply("Endi foydalanuvchining Telegram ID'sini kiriting:");
+      await ctx.reply("Теперь введите Telegram ID пользователя:");
     }
   }
 });
@@ -51,7 +51,7 @@ async function sendMessageToAll(ctx: any, message: any) {
       await sleep(1000);
     } catch (error) {
       console.error(
-        `Error sending message to user ${user.telegram_id}:`,
+        `Ошибка отправки сообщения пользователю ${user.telegram_id}:`,
         error
       );
       failCount++;
@@ -59,10 +59,11 @@ async function sendMessageToAll(ctx: any, message: any) {
   }
 
   await ctx.reply(
-    `Xabar yuborish yakunlandi:\n✅ Muvaffaqiyatli: ${successCount}\n❌ Muvaffaqiyatsiz: ${failCount}`
+    `Отправка сообщений завершена:\n✅ Успешно: ${successCount}\n❌ Неудачно: ${failCount}`
   );
   ctx.scene.state = {};
 }
+
 async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -70,20 +71,20 @@ async function sleep(ms: number) {
 async function sendMessageToOne(ctx: any, message: string, userId: string) {
   try {
     await ctx.telegram.sendMessage(userId, message);
-    await ctx.reply("Xabar muvaffaqiyatli yuborildi.");
+    await ctx.reply("Сообщение успешно отправлено.");
   } catch (error) {
-    console.error(`Error sending message to user ${userId}:`, error);
+    console.error(`Ошибка отправки сообщения пользователю ${userId}:`, error);
     await ctx.reply(
-      "Xabar yuborishda xatolik yuz berdi. Foydalanuvchi ID'sini tekshiring va qaytadan urinib ko'ring."
+      "Произошла ошибка при отправке сообщения. Проверьте ID пользователя и попробуйте снова."
     );
   }
   ctx.scene.state = {};
 }
 
-// Xavfsizlik uchun, faqat ma'lum foydalanuvchilar (adminlar) uchun ruxsat berish
+// Для безопасности, разрешить доступ только определенным пользователям (админам)
 function isAdmin(userId: string) {
-  // Bu yerda admin foydalanuvchilar ro'yxatini tekshirish kerak
-  const adminIds = ["ADMIN_ID_1", "ADMIN_ID_2"]; // Admin ID'larini kiriting
+  // Здесь нужно проверить список администраторов
+  const adminIds = ["ADMIN_ID_1", "ADMIN_ID_2"]; // Введите ID администраторов
   return adminIds.includes(userId);
 }
 
