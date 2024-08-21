@@ -105,6 +105,81 @@ scene.action("back_to_subscriptions", async (ctx) => {
   await ctx.answerCbQuery();
 });
 
+scene.action(/^view_bundle_/, async (ctx: any) => {
+  const user_id = ctx.from?.id;
+  const channelBundleId = ctx.update.callback_query?.data.split("_")[2];
+  if (channelBundleId) {
+    const channelBundle = await prisma.channelBundle.findFirst({
+      where: {
+        id: String(channelBundleId),
+        active: true,
+      },
+      include: {
+        channels: true,
+      },
+    });
+
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        user: {
+          telegram_id: ctx.from.id.toString(),
+        },
+        channelBundleId: channelBundleId,
+        endDate: {
+          gte: new Date(),
+        },
+        status: "ACTIVE",
+      },
+    });
+
+    if (subscription) {
+      return ctx.reply("У вас уже есть эта подписка");
+    }
+    if (channelBundle) {
+      const bundleInfo = `
+    📦 Пакет: "${channelBundle.name}"
+    
+    📝 Описание: ${channelBundle.description || "Описание отсутствует"}
+    
+    💰 Цена: ${channelBundle.price} сум
+    
+    📊 Количество каналов: ${channelBundle.channels.length}
+    
+    Список каналов:
+    ${channelBundle.channels
+      .map((channel: any, index: any) => `${index + 1}. ${channel.name}`)
+      .join("\n")}
+    `;
+      const subscribeButton = {
+        text: "Подписаться",
+        callback_data: `subscribe_${channelBundle.id}`,
+      };
+
+      // Отправка сообщения
+      await ctx.telegram.sendMessage(
+        user_id,
+        `Здравствуйте! 
+  
+  Вы отправили запрос о следующем пакете каналов:
+  
+  ${bundleInfo}
+  
+  Хотите подписаться на этот пакет?`,
+        {
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [[subscribeButton]],
+          },
+        }
+      );
+
+      // Сохранение ID пакета для следующего шага
+      ctx.scene.state.currentBundleId = channelBundle.id;
+      return;
+    }
+  }
+});
+
 // async function showSubscriptions(ctx: any, page: number) {
 //   const user = await prisma.user.findFirst({
 //     where: {
