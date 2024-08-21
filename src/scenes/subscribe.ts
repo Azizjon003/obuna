@@ -98,7 +98,7 @@ scene.action(/^confirm_subscribe_/, async (ctx: any) => {
 
     console.log("user", user, channelBundle);
 
-    await ctx.deleteMessage();
+    // await ctx.deleteMessage();
     const newSubscription = await prisma.subscription.create({
       data: {
         user_id: user.id,
