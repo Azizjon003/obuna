@@ -1,6 +1,5 @@
 require("dotenv").config();
-import { Context, Markup, Middleware } from "telegraf";
-import { SceneContext } from "telegraf/typings/scenes";
+import { Markup } from "telegraf";
 import prisma from "../prisma/prisma";
 import bot from "./core/bot";
 import session from "./core/session";
@@ -10,10 +9,6 @@ import { isInvited } from "./utils/subcribe";
 
 bot.use(isInvited);
 bot.use(session);
-
-const middleware: Middleware<Context | SceneContext> = (ctx: any, next) => {
-  ctx?.session ?? (ctx.session = {});
-};
 
 bot.use(stage.middleware());
 

@@ -29,6 +29,7 @@ scene.enter(async (ctx: any) => {
       const channelBundle = await prisma.channelBundle.findFirst({
         where: {
           id: String(channelBundleId),
+          active: true,
         },
         include: {
           channels: true,

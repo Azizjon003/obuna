@@ -76,6 +76,7 @@
     price          Float
     duration       Int @default(30)
     createdAt      DateTime  @default(now())
+    active Boolean @default(true)
     channels       Channel[]
     subscriptions  subscription[]
   }

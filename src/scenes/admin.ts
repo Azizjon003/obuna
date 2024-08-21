@@ -467,13 +467,18 @@ export async function showBundles(ctx: any, page: number) {
     }
 
     const totalBundles = await prisma.channelBundle.count({
-      where: { merchantUserId: merchantUser.id },
+      where: {
+        active: true,
+      },
     });
 
     const bundles = await prisma.channelBundle.findMany({
-      where: { merchantUserId: merchantUser.id },
+      where: {
+        active: true,
+      },
       skip: (page - 1) * ITEMS_PER_PAGE,
       take: ITEMS_PER_PAGE,
+
       include: { channels: true },
     });
 
@@ -542,6 +547,57 @@ scene.hears("Отправить сообщение", async (ctx: any) => {
   ctx.scene.enter("sendMessage");
 });
 
+scene.action(/^delete_bundle_/, async (ctx: any) => {
+  const bundleId = ctx.update.callback_query.data.split("_")[2];
+
+  try {
+    // Confirm deletion
+    await ctx.answerCbQuery();
+    await ctx.reply(
+      "Вы уверены, что хотите удалить этот набор? Это действие нельзя отменить.",
+      Markup.inlineKeyboard([
+        [Markup.button.callback("Да, удалить", `confirm_delete_${bundleId}`)],
+        [Markup.button.callback("Отмена", "cancel_delete")],
+      ])
+    );
+  } catch (error) {
+    console.error("Ошибка в delete_bundle:", error);
+    await ctx.answerCbQuery(
+      "Произошла ошибка. Пожалуйста, попробуйте еще раз."
+    );
+  }
+});
+
+// Подтверждение удаления
+scene.action(/^confirm_delete_/, async (ctx: any) => {
+  const bundleId = ctx.update.callback_query.data.split("_")[2];
+
+  try {
+    // Delete the bundle
+    await prisma.channelBundle.update({
+      where: { id: bundleId },
+      data: {
+        active: false,
+      },
+    });
+
+    await ctx.answerCbQuery("Набор успешно удален");
+    await ctx.reply("Набор был успешно удален.");
+    await showBundles(ctx, 1);
+  } catch (error) {
+    console.error("Ошибка при удалении набора:", error);
+    await ctx.answerCbQuery(
+      "Произошла ошибка при удалении набора. Пожалуйста, попробуйте еще раз."
+    );
+  }
+});
+
+// Отмена удаления
+scene.action("cancel_delete", async (ctx: any) => {
+  await ctx.answerCbQuery("Удаление отменено");
+  await ctx.reply("Удаление набора было отменено.");
+  await showBundles(ctx, 1);
+});
 // Для отображения кнопки отправки сообщения только администраторам
 
 export default scene;
