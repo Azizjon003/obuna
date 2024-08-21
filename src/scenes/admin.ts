@@ -503,6 +503,8 @@ export async function showBundles(ctx: any, page: number) {
       inlineKeyboard.push([
         Markup.button.callback(`🔍 Просмотр`, `view_bundle_${bundle.id}`),
         Markup.button.callback(`✏️ Редактировать`, `edit_bundle_${bundle.id}`),
+
+        Markup.button.callback("Удалять", `delete_bundle_${bundle.id}`),
       ]);
     });
 

@@ -180,9 +180,13 @@ scene.action(/^view_bundle_/, async (ctx: any) => {
       ctx.session.currentBundleId = channelBundle.id;
       // ctx.session.currentBundleId = bundleId;
 
-      return await ctx.scene.enter("subscribe");
+      return;
+      // return await ctx.scene.enter("subscribe");
     }
   }
+});
+scene.action(/^subscribe_/, async (ctx: any) => {
+  return await ctx.scene.enter("subscribe");
 });
 
 // async function showSubscriptions(ctx: any, page: number) {
