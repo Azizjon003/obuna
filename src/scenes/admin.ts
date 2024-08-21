@@ -426,23 +426,23 @@ scene.action("create_new_bundle", async (ctx: any) => {
 });
 
 // To'plamni o'chirish
-scene.action(/^delete_bundle_/, async (ctx: any) => {
-  const bundleId = ctx.update.callback_query.data.split("_")[2];
+// scene.action(/^delete_bundle_/, async (ctx: any) => {
+//   const bundleId = ctx.update.callback_query.data.split("_")[2];
 
-  try {
-    await prisma.channelBundle.delete({
-      where: { id: bundleId },
-    });
+//   try {
+//     await prisma.channelBundle.delete({
+//       where: { id: bundleId },
+//     });
 
-    await ctx.answerCbQuery("Набор успешно удален");
-    await showBundles(ctx, 1);
-  } catch (error) {
-    console.error("Ошибка в delete_bundle:", error);
-    await ctx.answerCbQuery(
-      "Произошла ошибка при удалении набора. Пожалуйста, попробуйте еще раз."
-    );
-  }
-});
+//     await ctx.answerCbQuery("Набор успешно удален");
+//     await showBundles(ctx, 1);
+//   } catch (error) {
+//     console.error("Ошибка в delete_bundle:", error);
+//     await ctx.answerCbQuery(
+//       "Произошла ошибка при удалении набора. Пожалуйста, попробуйте еще раз."
+//     );
+//   }
+// });
 
 // Возврат назад
 scene.action("back_to_bundles", async (ctx) => {
