@@ -106,7 +106,10 @@ scene.action("back_to_subscriptions", async (ctx) => {
 });
 
 scene.action(/^view_bundle_/, async (ctx: any) => {
+  await ctx.deleteMessage();
+  await ctx.answerCbQuery("Подписка успешно создана!");
   const user_id = ctx.from?.id;
+
   const channelBundleId = ctx.update.callback_query?.data.split("_")[2];
   if (channelBundleId) {
     const channelBundle = await prisma.channelBundle.findFirst({
@@ -175,7 +178,9 @@ scene.action(/^view_bundle_/, async (ctx: any) => {
 
       // Сохранение ID пакета для следующего шага
       ctx.scene.state.currentBundleId = channelBundle.id;
-      return;
+      // ctx.session.currentBundleId = bundleId;
+
+      return await ctx.scene.enter("subscribe");
     }
   }
 });
