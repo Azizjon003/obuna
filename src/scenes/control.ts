@@ -177,7 +177,7 @@ scene.action(/^view_bundle_/, async (ctx: any) => {
       );
 
       // Сохранение ID пакета для следующего шага
-      ctx.scene.state.currentBundleId = channelBundle.id;
+      ctx.session.currentBundleId = channelBundle.id;
       // ctx.session.currentBundleId = bundleId;
 
       return await ctx.scene.enter("subscribe");
