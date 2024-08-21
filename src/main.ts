@@ -147,14 +147,18 @@ bot.on("successful_payment", async (ctx) => {
 
   const channelBundle = transaction.subscription.channelBundle;
 
-  await prisma.merchantWallet.update({
+  await prisma.merchantWallet.upsert({
     where: {
       merchantUserId: channelBundle.merchantUserId,
     },
-    data: {
+    update: {
       balance: {
         increment: channelBundle.price,
       },
+    },
+    create: {
+      merchantUserId: channelBundle.merchantUserId,
+      balance: channelBundle.price,
     },
   });
 
