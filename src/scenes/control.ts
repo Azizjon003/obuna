@@ -106,7 +106,7 @@ scene.action("back_to_subscriptions", async (ctx) => {
 });
 
 scene.action(/^view_bundle_/, async (ctx: any) => {
-  await ctx.deleteMessage();
+  // await ctx.deleteMessage();
   await ctx.answerCbQuery("Подписка успешно создана!");
   const user_id = ctx.from?.id;
 
