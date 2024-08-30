@@ -168,27 +168,17 @@ scene.action(/^view_bundle_/, async (ctx: any) => {
     
     Оплатить ⬇️`;
       const subscribeButton = {
-        text: "Подписаться",
+        text: "Оплатить ⬇️",
         callback_data: `subscribe_${channelBundle.id}`,
       };
 
       // Отправка сообщения
-      await ctx.telegram.sendMessage(
-        user_id,
-        `Здравствуйте! 
-  
-  Вы отправили запрос о следующем пакете каналов:
-  
-  ${bundleInfo}
-  
-  Хотите подписаться на этот пакет?`,
-        {
-          parse_mode: "Markdown",
-          reply_markup: {
-            inline_keyboard: [[subscribeButton]],
-          },
-        }
-      );
+      await ctx.telegram.sendMessage(user_id, `${bundleInfo}`, {
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [[subscribeButton]],
+        },
+      });
 
       // Сохранение ID пакета для следующего шага
       ctx.session.currentBundleId = channelBundle.id;
