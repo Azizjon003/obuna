@@ -1,4 +1,6 @@
 require("dotenv").config();
+import console from "console";
+import cron from "node-cron";
 import { Markup } from "telegraf";
 import prisma from "../prisma/prisma";
 import bot from "./core/bot";
@@ -269,3 +271,102 @@ process.on("unhandledRejection", (reason, promise) => {
     new Date()
   );
 });
+
+async function removeFromChannel(channelId: string, userId: string) {
+  try {
+    await bot.telegram.banChatMember(channelId, Number(userId));
+    console.log(`✅ ${userId} successfully removed from ${channelId}`);
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Bandan chiqarish
+    await bot.telegram.unbanChatMember(channelId, Number(userId));
+    console.log(`✅ ${userId} unbanned from ${channelId}`);
+  } catch (error) {
+    console.error(`❌ Error removing ${userId} from ${channelId}:`, error);
+    // Xatoni yuqoriga uzatish
+    throw error;
+  }
+}
+cron.schedule("0 12 * * *", async () => {
+  // har kuni soat 12:00 da ishlaydi
+  try {
+    const now = new Date();
+
+    const users = await prisma.subscription.findMany({
+      where: {
+        endDate: {
+          gt: now,
+        },
+      },
+      include: {
+        user: true,
+        channelBundle: {
+          include: {
+            channels: true,
+          },
+        },
+      },
+    });
+
+    for (let user of users) {
+      const userData = user.user;
+      const endDate = new Date(user?.endDate || new Date());
+
+      // Kunlar farqini hisoblash
+      const diffTime = endDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      // Faqat 5 kun va undan kam qolgan foydalanuvchilarga xabar yuborish
+      if (diffDays <= 5) {
+        let text = "";
+
+        // Kunlar soniga qarab matnni moslashtirish
+        if (diffDays === 1) {
+          text = `Уважаемый ${userData?.name}!\n\nВаша подписка заканчивается завтра. Пожалуйста, продлите подписку.`;
+        } else if (diffDays <= 0) {
+          const channels = user.channelBundle.channels;
+          if (channels.length > 0) {
+            for (let channel of channels) {
+              try {
+                await removeFromChannel(
+                  channel.telegram_id,
+                  userData?.telegram_id
+                );
+              } catch (error) {
+                console.error(
+                  `❌ Error removing ${userData?.telegram_id} from ${channel.telegram_id}:`,
+                  error
+                );
+              }
+            }
+          }
+          text = `Уважаемый ${userData?.name}!\n\nВаша подписка закончилась. Пожалуйста, обновите подписку, чтобы продолжить пользоваться сервисом.`;
+        } else {
+          text = `Уважаемый ${
+            userData?.name
+          }!\n\nВаша подписка заканчивается через ${diffDays} ${getDayWord(
+            diffDays
+          )}. Пожалуйста, продлите подписку.`;
+        }
+
+        // Foydalanuvchi telegram_id mavjud bo'lsagina xabar yuborish
+        if (userData?.telegram_id) {
+          await bot.telegram.sendMessage(userData.telegram_id, text);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Xatolik yuz berdi:", error);
+  }
+});
+
+// Kun so'zini to'g'ri kelishikda qaytaruvchi funksiya
+function getDayWord(days: number) {
+  if (days >= 11 && days <= 19) return "дней";
+
+  const lastDigit = days % 10;
+  if (lastDigit === 1) return "день";
+  if (lastDigit >= 2 && lastDigit <= 4) return "дня";
+  return "дней";
+}
