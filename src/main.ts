@@ -272,7 +272,11 @@ process.on("unhandledRejection", (reason, promise) => {
   );
 });
 
-async function removeFromChannel(channelId: string, userId: string) {
+async function removeFromChannel(
+  channelId: string,
+  userId: string,
+  subscriptionId: string
+) {
   try {
     await bot.telegram.banChatMember(channelId, Number(userId));
     console.log(`✅ ${userId} successfully removed from ${channelId}`);
@@ -282,6 +286,15 @@ async function removeFromChannel(channelId: string, userId: string) {
     // Bandan chiqarish
     await bot.telegram.unbanChatMember(channelId, Number(userId));
     console.log(`✅ ${userId} unbanned from ${channelId}`);
+
+    await prisma.subscription.update({
+      where: {
+        id: subscriptionId,
+      },
+      data: {
+        status: "EXPIRED",
+      },
+    });
   } catch (error) {
     console.error(`❌ Error removing ${userId} from ${channelId}:`, error);
     // Xatoni yuqoriga uzatish
@@ -298,6 +311,7 @@ cron.schedule("0 12 * * *", async () => {
         endDate: {
           gt: now,
         },
+        status: "ACTIVE",
       },
       include: {
         user: true,
@@ -323,7 +337,10 @@ cron.schedule("0 12 * * *", async () => {
 
         // Kunlar soniga qarab matnni moslashtirish
         if (diffDays === 1) {
-          text = `Уважаемый ${userData?.name}!\n\nВаша подписка заканчивается завтра. Пожалуйста, продлите подписку.`;
+          text = `Здравствуйте дорогая ${userData?.name}
+сегодня последний день октября, последний день подписки на канал🌷
+
+Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨`;
         } else if (diffDays <= 0) {
           const channels = user.channelBundle.channels;
           if (channels.length > 0) {
@@ -331,7 +348,8 @@ cron.schedule("0 12 * * *", async () => {
               try {
                 await removeFromChannel(
                   channel.telegram_id,
-                  userData?.telegram_id
+                  userData?.telegram_id,
+                  user.id
                 );
               } catch (error) {
                 console.error(
@@ -341,13 +359,15 @@ cron.schedule("0 12 * * *", async () => {
               }
             }
           }
-          text = `Уважаемый ${userData?.name}!\n\nВаша подписка закончилась. Пожалуйста, обновите подписку, чтобы продолжить пользоваться сервисом.`;
+          text = ` Здравствуйте дорогая ${userData?.name}
+сегодня последний день октября, последний день подписки на канал🌷
+
+Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨.\nВаша подписка закончилась.`;
         } else {
-          text = `Уважаемый ${
-            userData?.name
-          }!\n\nВаша подписка заканчивается через ${diffDays} ${getDayWord(
-            diffDays
-          )}. Пожалуйста, продлите подписку.`;
+          text = `Здравствуйте дорогая ${userData?.name}
+сегодня последний день октября, последний день подписки на канал🌷
+
+Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨`;
         }
 
         // Foydalanuvchi telegram_id mavjud bo'lsagina xabar yuborish
