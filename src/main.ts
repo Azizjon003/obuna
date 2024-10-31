@@ -227,6 +227,7 @@ bot.on("successful_payment", async (ctx) => {
     },
     data: {
       status: "ACTIVE",
+      endDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
     },
   });
 
@@ -278,14 +279,14 @@ async function removeFromChannel(
   subscriptionId: string
 ) {
   try {
-    await bot.telegram.banChatMember(channelId, Number(userId));
-    console.log(`✅ ${userId} successfully removed from ${channelId}`);
+    // await bot.telegram.banChatMember(channelId, Number(userId));
+    // console.log(`✅ ${userId} successfully removed from ${channelId}`);
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    // Bandan chiqarish
-    await bot.telegram.unbanChatMember(channelId, Number(userId));
-    console.log(`✅ ${userId} unbanned from ${channelId}`);
+    // // Bandan chiqarish
+    // await bot.telegram.unbanChatMember(channelId, Number(userId));
+    // console.log(`✅ ${userId} unbanned from ${channelId}`);
 
     await prisma.subscription.update({
       where: {
@@ -363,7 +364,7 @@ cron.schedule("0 12 * * *", async () => {
             text = ` Здравствуйте дорогая ${userData?.name}
 сегодня последний день октября, последний день подписки на канал🌷
 
-Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨.\nВаша подписка закончилась.`;
+Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨.\nВаша подписка закончилась.\nПросим Вас переподписать в течение 3 дней.\nПродлите подписку`;
           } else {
             text = `Здравствуйте дорогая ${userData?.name}
 сегодня последний день октября, последний день подписки на канал🌷
