@@ -336,49 +336,74 @@ cron.schedule("* * * * *", async () => {
 
         // Faqat 5 kun va undan kam qolgan foydalanuvchilarga xabar yuborish
         console.log(`📅 ${userData?.name} ${diffDays} ${getDayWord(diffDays)}`);
-        //         if (diffDays <= 5) {
-        //           let text = "";
+        if (diffDays <= 5) {
+          let text = "";
 
-        //           // Kunlar soniga qarab matnni moslashtirish
-        //           if (diffDays === 1) {
-        //             text = `Здравствуйте дорогая ${userData?.name}
-        // сегодня последний день октября, последний день подписки на канал🌷
+          // Kunlar soniga qarab matnni moslashtirish
+          if (diffDays === 1) {
+            text = `Здравствуйте дорогая ${userData?.name}
+        сегодня последний день октября, последний день подписки на канал🌷
 
-        // Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨`;
-        //           } else if (diffDays <= 0) {
-        //             const channels = user.channelBundle.channels;
-        //             if (channels.length > 0) {
-        //               for (let channel of channels) {
-        //                 try {
-        //                   await removeFromChannel(
-        //                     channel.telegram_id,
-        //                     userData?.telegram_id,
-        //                     user.id
-        //                   );
-        //                 } catch (error) {
-        //                   console.error(
-        //                     `❌ Error removing ${userData?.telegram_id} from ${channel.telegram_id}:`,
-        //                     error
-        //                   );
-        //                 }
-        //               }
-        //             }
-        //             text = ` Здравствуйте дорогая ${userData?.name}
-        // сегодня последний день октября, последний день подписки на канал🌷
+        Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨`;
+          } else if (diffDays <= 0) {
+            const channels = user.channelBundle.channels;
+            if (channels.length > 0) {
+              for (let channel of channels) {
+                try {
+                  await removeFromChannel(
+                    channel.telegram_id,
+                    userData?.telegram_id,
+                    user.id
+                  );
+                } catch (error) {
+                  console.error(
+                    `❌ Error removing ${userData?.telegram_id} from ${channel.telegram_id}:`,
+                    error
+                  );
+                }
+              }
+            }
+            text = ` Здравствуйте дорогая ${userData?.name}
+        сегодня последний день октября, последний день подписки на канал🌷
 
-        // Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨.\nВаша подписка закончилась.\nПросим Вас переподписать в течение 3 дней.\nПродлите подписку`;
-        //           } else {
-        //             text = `Здравствуйте дорогая ${userData?.name}
-        // сегодня последний день октября, последний день подписки на канал🌷
+        Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨.\nВаша подписка закончилась.\nПросим Вас переподписать в течение 3 дней.\nПродлите подписку`;
+          } else {
+            text = `Здравствуйте дорогая ${userData?.name}
+        сегодня последний день октября, последний день подписки на канал🌷
 
-        // Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨`;
-        //           }
+        Необходимо обновить подписку, чтобы смотреть новые уроки макияжа в ноябре ✨`;
+          }
 
-        //           // Foydalanuvchi telegram_id mavjud bo'lsagina xabar yuborish
-        //           if (userData?.telegram_id) {
-        //             await bot.telegram.sendMessage(userData.telegram_id, text);
-        //           }
-        //         }
+          // Foydalanuvchi telegram_id mavjud bo'lsagina xabar yuborish
+          if (userData?.telegram_id) {
+            await bot.telegram.sendMessage(userData.telegram_id, text);
+          }
+        }
+
+        if (diffDays <= 0) {
+          const channels = user.channelBundle.channels;
+          if (channels.length > 0) {
+            for (let channel of channels) {
+              try {
+                await removeFromChannel(
+                  channel.telegram_id,
+                  userData?.telegram_id,
+                  user.id
+                );
+                console.log(
+                  `📅 banned ${userData?.name} ${diffDays} ${getDayWord(
+                    diffDays
+                  )}`
+                );
+              } catch (error) {
+                console.error(
+                  `❌ Error removing ${userData?.telegram_id} from ${channel.telegram_id}:`,
+                  error
+                );
+              }
+            }
+          }
+        }
       } catch (error) {
         console.error("❌ Error sending message to user:", error);
       }
