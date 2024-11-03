@@ -303,7 +303,7 @@ async function removeFromChannel(
   }
 }
 // 0 12 * * *
-cron.schedule("* * * * *", async () => {
+cron.schedule("0 12 * * *", async () => {
   // har kuni soat 12:00 da ishlaydi
   try {
     const now = new Date();
@@ -377,31 +377,6 @@ cron.schedule("* * * * *", async () => {
           // Foydalanuvchi telegram_id mavjud bo'lsagina xabar yuborish
           if (userData?.telegram_id) {
             await bot.telegram.sendMessage(userData.telegram_id, text);
-          }
-        }
-
-        if (diffDays <= 0) {
-          const channels = user.channelBundle.channels;
-          if (channels.length > 0) {
-            for (let channel of channels) {
-              try {
-                await removeFromChannel(
-                  channel.telegram_id,
-                  userData?.telegram_id,
-                  user.id
-                );
-                console.log(
-                  `📅 banned ${userData?.name} ${diffDays} ${getDayWord(
-                    diffDays
-                  )}`
-                );
-              } catch (error) {
-                console.error(
-                  `❌ Error removing ${userData?.telegram_id} from ${channel.telegram_id}:`,
-                  error
-                );
-              }
-            }
           }
         }
       } catch (error) {
