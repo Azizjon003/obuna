@@ -311,7 +311,7 @@ cron.schedule("0 12 * * *", async () => {
     const users = await prisma.subscription.findMany({
       where: {
         endDate: {
-          lte: now,
+          gte: now,
         },
         status: "ACTIVE",
       },
